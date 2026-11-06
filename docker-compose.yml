@@ -25,7 +25,10 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://talentgraph:talentgraph@db:5432/talentgraph
-      JWT_SECRET: change-me-in-production
+      # Required — compose refuses to start when JWT_SECRET is unset/empty,
+      # so a known default secret can never reach production by accident:
+      #   export JWT_SECRET="$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")"
+      JWT_SECRET: ${JWT_SECRET:?Set the JWT_SECRET environment variable before running docker compose}
       PORT: 4000
     depends_on:
       db:

@@ -42,6 +42,13 @@ const updateJobSchema = z
   .refine(
     (v) => v.experienceMax === null || v.experienceMax === undefined || (v.experienceMin === undefined ? true : v.experienceMax >= v.experienceMin),
     { message: 'Maximum experience must be greater than or equal to minimum', path: ['experienceMax'] }
+  )
+  .refine(
+    // Same-payload guard: when the patch contains both salary fields.
+    (v) =>
+      v.salaryMax === null || v.salaryMax === undefined || v.salaryMax === 0 ||
+      v.salaryMin === undefined || v.salaryMax >= v.salaryMin,
+    { message: 'Maximum salary must be greater than or equal to minimum', path: ['salaryMax'] }
   );
 
 const jobStatusSchema = z.object({

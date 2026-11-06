@@ -2,7 +2,7 @@ const router = require('express').Router();
 const controller = require('./controller');
 const { validate } = require('../../middleware/validate');
 const { requireAuth, requireRole } = require('../../middleware/auth');
-const { attachMyCompany } = require('../../middleware/company');
+const { attachMyCompany, requireCompanyRole } = require('../../middleware/company');
 const { applySchema, applicationStatusSchema, companyListQuerySchema, noteSchema } = require('./schemas');
 
 router.use(requireAuth);
@@ -27,10 +27,14 @@ router.get(
   controller.listForCompany
 );
 
+// Pipeline mutations are decisions, not interview logistics — only company
+// ADMIN / RECRUITER roles may make them. Company INTERVIEWERs can view the
+// workspace but cannot change statuses or write private notes.
 router.patch(
   '/:applicationId/status',
   requireRole('RECRUITER'),
   attachMyCompany,
+  requireCompanyRole('ADMIN', 'RECRUITER'),
   validate({ body: applicationStatusSchema }),
   controller.changeStatus
 );
@@ -46,6 +50,7 @@ router.post(
   '/:applicationId/notes',
   requireRole('RECRUITER'),
   attachMyCompany,
+  requireCompanyRole('ADMIN', 'RECRUITER'),
   validate({ body: noteSchema }),
   controller.addNote
 );

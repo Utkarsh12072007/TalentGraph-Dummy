@@ -198,9 +198,11 @@ export default function JobDetail() {
               maxLength={3000}
             />
           </FormField>
-          {!candidateProfile?.headline && (
+          {isCandidate && (!candidateProfile?.headline || !candidateProfile?.summary) && (
             <Alert variant="warning" title="Profile incomplete">
-              Add a headline and summary in My Profile — recruiters filter candidates by them.
+              Add both a headline and a summary to apply. Complete them in{' '}
+              <Link to="/profile" className="font-medium underline underline-offset-2">My Profile</Link>{' '}
+              — recruiters also filter candidates by these fields.
             </Alert>
           )}
         </div>

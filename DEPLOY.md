@@ -15,7 +15,9 @@ You received `talentgraph-source.zip` (this project without secrets — `.env`,
 database files and `node_modules` are excluded).
 
 ```bash
-unzip talentgraph-source.zip && cd talentgraph
+unzip talentgraph-source.zip && cd my-project
+git init && git add -A && git commit -m "TalentGraph"
+git branch -M main
 git remote add origin https://github.com/<your-username>/talentgraph.git
 git push -u origin main
 ```

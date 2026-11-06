@@ -103,11 +103,11 @@ export default function Jobs() {
             {Object.entries(EXPERIENCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </div>
-        <div className="hidden lg:col-span-3 lg:block">
+        <div className="lg:col-span-3">
           <Label htmlFor="job-salary">Min. salary</Label>
           <Input id="job-salary" type="number" min="0" placeholder="e.g. 1000000" value={filters.salaryMin} onChange={(e) => setFilter('salaryMin', e.target.value)} />
         </div>
-        <div className="hidden lg:col-span-2 lg:block">
+        <div className="lg:col-span-2">
           <Label htmlFor="job-sort">Sort by</Label>
           <Select id="job-sort" value={filters.sort} onChange={(e) => setFilter('sort', e.target.value)}>
             <option value="recent">Most recent</option>

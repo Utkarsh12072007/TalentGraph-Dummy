@@ -39,9 +39,17 @@ async function getAuthorized(viewer, interviewId) {
   }
 
   if (viewer.role === 'RECRUITER') {
-    const membership = await prisma.companyMember.findUnique({ where: { userId: viewer.id } });
+    // This path performs its own membership check (it does not go through
+    // attachMyCompany), so the suspended-company rule is enforced here too.
+    const membership = await prisma.companyMember.findUnique({
+      where: { userId: viewer.id },
+      include: { company: { select: { status: true } } },
+    });
     if (!membership || membership.companyId !== companyId) {
       throw ApiError.forbidden('This interview belongs to another company');
+    }
+    if (membership.company.status === 'SUSPENDED') {
+      throw ApiError.forbidden('This company workspace has been suspended');
     }
     return { interview, isCompanyMember: true, companyId, companyRole: membership.role };
   }

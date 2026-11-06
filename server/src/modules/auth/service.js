@@ -83,7 +83,9 @@ async function me(userId) {
     where: { id: userId },
     select: {
       ...PUBLIC_USER_FIELDS,
-      candidateProfile: { select: { id: true, headline: true } },
+      // Headline + summary drive the client's "profile complete" warnings,
+      // so both are needed on the session payload.
+      candidateProfile: { select: { id: true, headline: true, summary: true } },
       memberships: {
         include: {
           company: {

@@ -102,4 +102,46 @@ describe('Applications', () => {
     const del = await cand.agent.delete(`/api/resumes/${resume.id}`);
     expect(del.status).toBe(409);
   });
+
+// Regression coverage for role-based pipeline access: company INTERVIEWERs
+// can view the workspace but must not change statuses or write private notes.
+describe('Application role restrictions', () => {
+  test('company interviewer cannot change status or add notes, but can view the application', async () => {
+    const rec = await makeRecruiter('role-rec@co.test', 'Role Co');
+    const interviewer = await makeRecruiter('role-iv@co.test', null); // joins as INTERVIEWER below
+    const cand = await makeCandidate('role-cand@test.dev');
+    await completeProfile(cand.agent);
+
+    const me = await rec.agent.get('/api/auth/me');
+    const companyId = me.body.data.user.memberships[0].companyId;
+    await rec.agent
+      .post(`/api/companies/${companyId}/members`)
+      .send({ email: 'role-iv@co.test', role: 'INTERVIEWER' })
+      .expect(201);
+
+    const { job } = await createJob(rec.agent);
+    const apply = await cand.agent.post('/api/applications').send({ jobId: job.id });
+    expect(apply.status).toBe(201);
+    const applicationId = apply.body.data.application.id;
+
+    // Interviewers read the workspace (they interview the candidate)…
+    await interviewer.agent.get(`/api/applications/${applicationId}`).expect(200);
+    await interviewer.agent.get(`/api/applications/${applicationId}/notes`).expect(200);
+
+    // …but pipeline decisions are admin/recruiter-only.
+    await interviewer.agent
+      .patch(`/api/applications/${applicationId}/status`)
+      .send({ status: 'IN_REVIEW' })
+      .expect(403);
+    await interviewer.agent
+      .post(`/api/applications/${applicationId}/notes`)
+      .send({ content: 'interviewer sneaking a note in' })
+      .expect(403);
+
+    // The admin still can — and the pipeline is untouched by the blocked calls.
+    await rec.agent.patch(`/api/applications/${applicationId}/status`).send({ status: 'IN_REVIEW' }).expect(200);
+    const notes = await rec.agent.get(`/api/applications/${applicationId}/notes`);
+    expect(notes.body.data.notes).toHaveLength(0);
+  });
+});
 });

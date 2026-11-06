@@ -87,4 +87,49 @@ describe('Jobs', () => {
     });
     expect(badSalary.status).toBe(400);
   });
+
+// Regression coverage: partial job updates must not be able to create an
+// invalid salary/experience range — neither inside the payload nor by
+// combining the patch with the stored values.
+describe('Job update range validation', () => {
+  test('rejects invalid salary ranges in the payload and against stored values', async () => {
+    const rec = await makeRecruiter('rng-rec@co.test', 'Range Co');
+    const { job, companyId } = await createJob(rec.agent, { salaryMin: 500000, salaryMax: 900000 });
+    const url = `/api/jobs/company/${companyId}/${job.id}`;
+
+    // Both fields in one payload, max < min.
+    await rec.agent
+      .patch(url)
+      .send({ salaryMin: 800000, salaryMax: 300000 })
+      .expect(400);
+
+    // Patch only salaryMax below the STORED salaryMin — caught by the
+    // merged-values check in the service, invisible to the payload schema.
+    await rec.agent
+      .patch(url)
+      .send({ salaryMax: 100000 })
+      .expect(400);
+
+    // Stored row is untouched by the rejected updates.
+    const detail = await rec.agent.get(`/api/jobs/${job.id}`);
+    expect(detail.body.data.job.salaryMin).toBe(500000);
+    expect(detail.body.data.job.salaryMax).toBe(900000);
+
+    // A valid patch still works.
+    await rec.agent
+      .patch(url)
+      .send({ salaryMax: 1200000 })
+      .expect(200);
+  });
+
+  test('rejects invalid experience ranges merged from patch + stored values', async () => {
+    const rec = await makeRecruiter('rng-rec2@co.test', 'Range Co 2');
+    const { job, companyId } = await createJob(rec.agent, { experienceMin: 3, experienceMax: 6 });
+
+    await rec.agent
+      .patch(`/api/jobs/company/${companyId}/${job.id}`)
+      .send({ experienceMin: 8 })
+      .expect(400);
+  });
+});
 });

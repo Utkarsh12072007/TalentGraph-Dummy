@@ -70,6 +70,18 @@ async function update(user, companyId, jobId, data) {
 
   const { skills, ...fields } = data;
 
+  // Cross-field validation against the MERGED values (patch + existing row).
+  // A partial update can create an invalid range that the payload alone never
+  // shows — e.g. the job already has salaryMin=10 and the patch sets
+  // salaryMax=5. The schema guard only sees the patch, this sees the result.
+  const merged = { ...existing, ...fields };
+  if (merged.experienceMax != null && merged.experienceMax < merged.experienceMin) {
+    throw ApiError.badRequest('Maximum experience must be greater than or equal to minimum');
+  }
+  if (merged.salaryMax != null && merged.salaryMax > 0 && (merged.salaryMin ?? 0) > merged.salaryMax) {
+    throw ApiError.badRequest('Maximum salary must be greater than or equal to minimum');
+  }
+
   const job = await prisma.job.update({
     where: { id: jobId },
     data: {

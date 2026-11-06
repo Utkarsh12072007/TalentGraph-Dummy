@@ -98,8 +98,16 @@ async function getForDownload(viewer, resumeId) {
   }
 
   if (viewer.role === 'RECRUITER') {
-    const membership = await prisma.companyMember.findUnique({ where: { userId: viewer.id } });
+    // This path performs its own membership check (it does not go through
+    // attachMyCompany), so the suspended-company rule is enforced here too.
+    const membership = await prisma.companyMember.findUnique({
+      where: { userId: viewer.id },
+      include: { company: { select: { status: true } } },
+    });
     if (!membership) throw ApiError.forbidden('Not authorized to download this resume');
+    if (membership.company.status === 'SUSPENDED') {
+      throw ApiError.forbidden('This company workspace has been suspended');
+    }
 
     const application = await prisma.application.findFirst({
       where: {

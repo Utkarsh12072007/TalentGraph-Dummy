@@ -79,24 +79,36 @@ async function update(user, companyId, data, logoFile) {
   const current = await prisma.company.findUnique({ where: { id: companyId } });
   if (!current) throw ApiError.notFound('Company not found');
 
-  let logoUrl;
-  if (logoFile) {
-    if (current.logoUrl) removeFileIfExists(logoPath(current.logoUrl.replace('/uploads/logos/', '')));
-    logoUrl = `/uploads/logos/${logoFile.filename}`;
+  // File lifecycle: write new file (already saved by multer) -> update DB ->
+  // only then delete the previous logo. If the DB update fails, the old logo
+  // stays intact and the unused new file is cleaned up. Deleting the old file
+  // up front (the old behavior) could leave the DB pointing at a missing file.
+  const previousLogoFile = current.logoUrl
+    ? current.logoUrl.replace('/uploads/logos/', '')
+    : null;
+  const newLogoFile = logoFile ? logoFile.filename : null;
+  const logoUrl = newLogoFile ? `/uploads/logos/${newLogoFile}` : undefined;
+
+  let updated;
+  try {
+    updated = await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.website !== undefined ? { website: data.website || null } : {}),
+        ...(data.industry !== undefined ? { industry: data.industry || null } : {}),
+        ...(data.size !== undefined ? { size: data.size || null } : {}),
+        ...(data.location !== undefined ? { location: data.location || null } : {}),
+        ...(data.description !== undefined ? { description: data.description || null } : {}),
+        ...(logoUrl ? { logoUrl } : {}),
+      },
+    });
+  } catch (err) {
+    if (newLogoFile) removeFileIfExists(logoPath(newLogoFile));
+    throw err;
   }
 
-  const updated = await prisma.company.update({
-    where: { id: companyId },
-    data: {
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.website !== undefined ? { website: data.website || null } : {}),
-      ...(data.industry !== undefined ? { industry: data.industry || null } : {}),
-      ...(data.size !== undefined ? { size: data.size || null } : {}),
-      ...(data.location !== undefined ? { location: data.location || null } : {}),
-      ...(data.description !== undefined ? { description: data.description || null } : {}),
-      ...(logoUrl ? { logoUrl } : {}),
-    },
-  });
+  if (newLogoFile && previousLogoFile) removeFileIfExists(logoPath(previousLogoFile));
 
   await audit(user.id, 'COMPANY_UPDATED', 'Company', companyId);
   return updated;
