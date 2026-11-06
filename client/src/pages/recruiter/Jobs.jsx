@@ -10,7 +10,7 @@ import { Badge, JobStatusBadge } from '../../components/ui/badge';
 import { Input, Select, FormField } from '../../components/ui/form';
 import { Dropdown, DropdownItem, DropdownSeparator } from '../../components/ui/dropdown';
 import { ConfirmDialog } from '../../components/ui/dialog';
-import { PageLoader, EmptyState } from '../../components/ui/misc';
+import { PageLoader, EmptyState, ErrorState } from '../../components/ui/misc';
 import { Tabs } from '../../components/ui/tabs';
 import { useToast } from '../../components/ui/toast';
 import { Pagination } from '../../components/common/Pagination';
@@ -40,7 +40,7 @@ export default function RecruiterJobs() {
     return `/api/jobs/company/${company.id}?${params}`;
   }, [company, status, q, page]);
 
-  const { data, loading, refetch } = useFetch(url);
+  const { data, loading, error, refetch } = useFetch(url);
   const jobs = data?.jobs || [];
 
   const changeStatus = async (job, next) => {
@@ -87,10 +87,10 @@ export default function RecruiterJobs() {
 
       <div className="mt-5 grid gap-3 sm:grid-cols-12">
         <div className="sm:col-span-7">
-          <Input placeholder="Search by title…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+          <Input aria-label="Search jobs by title" placeholder="Search by title…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
         </div>
         <div className="sm:col-span-5">
-          <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+          <Select aria-label="Filter jobs by status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
             {TABS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </Select>
         </div>
@@ -98,7 +98,8 @@ export default function RecruiterJobs() {
 
       <div className="mt-6 space-y-3">
         {loading && <PageLoader label="Loading jobs…" />}
-        {!loading && jobs.length === 0 && (
+        {!loading && error && <ErrorState title="Could not load jobs" description={error.message} onRetry={refetch} />}
+        {!loading && !error && jobs.length === 0 && (
           <EmptyState
             icon={Briefcase}
             title={q || status ? 'Nothing matches' : 'No jobs yet'}
@@ -106,7 +107,7 @@ export default function RecruiterJobs() {
             action={companyRole !== 'INTERVIEWER' && !(q || status) ? <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}><Plus /> New job</Button> : undefined}
           />
         )}
-        {!loading && jobs.map((job) => (
+        {!loading && !error && jobs.map((job) => (
           <Card key={job.id}>
             <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
               <div className="min-w-0 flex-1">

@@ -57,13 +57,13 @@ export default function AdminCompanies() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Company</th>
-                    <th className="hidden px-4 py-3 font-medium md:table-cell">Industry</th>
-                    <th className="hidden px-4 py-3 font-medium sm:table-cell">Members</th>
-                    <th className="hidden px-4 py-3 font-medium sm:table-cell">Jobs</th>
-                    <th className="hidden px-4 py-3 font-medium lg:table-cell">Created</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium" />
+                    <th scope="col" className="px-4 py-3 font-medium">Company</th>
+                    <th scope="col" className="hidden px-4 py-3 font-medium md:table-cell">Industry</th>
+                    <th scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">Members</th>
+                    <th scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">Jobs</th>
+                    <th scope="col" className="hidden px-4 py-3 font-medium lg:table-cell">Created</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                    <th scope="col" className="px-4 py-3 font-medium" />
                   </tr>
                 </thead>
                 <tbody>

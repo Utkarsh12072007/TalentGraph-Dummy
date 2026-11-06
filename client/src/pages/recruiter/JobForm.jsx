@@ -21,8 +21,47 @@ const EMPTY = {
   deadline: '', skills: [],
 };
 
+// Validate locally so mistakes show up beside the field that caused them.
+// Returns a map of { fieldName: message } — same shape the server's zod
+// details use, so both sources merge into one error display.
+function validateFields(form) {
+  const errors = {};
+  const title = form.title.trim();
+  const description = form.description.trim();
+  if (!title) errors.title = 'Job title is required.';
+  else if (title.length < 3) errors.title = 'Job title must be at least 3 characters.';
+
+  if (!description) errors.description = 'Description is required.';
+  else if (description.length < 30) {
+    errors.description = `Description must be at least 30 characters (${description.length}/30 so far).`;
+  }
+
+  const expMin = form.experienceMin === '' ? 0 : Number(form.experienceMin);
+  if (Number.isNaN(expMin) || expMin < 0) errors.experienceMin = 'Minimum experience must be 0 or more.';
+  if (form.experienceMax !== '') {
+    const expMax = Number(form.experienceMax);
+    if (Number.isNaN(expMax) || expMax < 0) errors.experienceMax = 'Maximum experience must be 0 or more.';
+    else if (!errors.experienceMin && expMax < expMin) {
+      errors.experienceMax = 'Maximum experience must be greater than or equal to minimum.';
+    }
+  }
+
+  if (form.salaryMin !== '' && (Number.isNaN(Number(form.salaryMin)) || Number(form.salaryMin) < 0)) {
+    errors.salaryMin = 'Salary must be 0 or more.';
+  }
+  if (form.salaryMax !== '') {
+    if (Number.isNaN(Number(form.salaryMax)) || Number(form.salaryMax) < 0) {
+      errors.salaryMax = 'Salary must be 0 or more.';
+    } else if (!errors.salaryMin && form.salaryMin !== '' && Number(form.salaryMax) < Number(form.salaryMin)) {
+      errors.salaryMax = 'Maximum salary must be greater than or equal to minimum.';
+    }
+  }
+  return errors;
+}
+
 // Create / edit job form. Save as DRAFT or PUBLISH directly (create),
-// or update an existing job (edit).
+// or update an existing job (edit). Field errors render beside the field and
+// everything the user typed is preserved after a failed save.
 export default function JobForm({ edit = false }) {
   const { jobId } = useParams();
   const { company, companyRole } = useAuth();
@@ -33,7 +72,8 @@ export default function JobForm({ edit = false }) {
   const [skillRequired, setSkillRequired] = useState(true);
   const [loading, setLoading] = useState(edit);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null); // non-field (general) error
+  const [fieldErrors, setFieldErrors] = useState({}); // { fieldName: message }
 
   // Load existing job in edit mode.
   const { data } = useFetch(edit && jobId ? `/api/jobs/${jobId}` : null);
@@ -60,7 +100,11 @@ export default function JobForm({ edit = false }) {
   }
   if (loading) return <div className="page-container py-10"><PageLoader /></div>;
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    // Clear that field's error as soon as the user edits it again.
+    setFieldErrors((fe) => (fe[k] ? { ...fe, [k]: undefined } : fe));
+  };
 
   const addSkill = () => {
     const name = skillDraft.trim();
@@ -74,7 +118,14 @@ export default function JobForm({ edit = false }) {
   };
 
   const submit = async (status) => {
-    setError(null);
+    setFormError(null);
+    const errors = validateFields(form);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -91,11 +142,7 @@ export default function JobForm({ edit = false }) {
       deadline: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       skills: form.skills,
     };
-    if (!payload.title || payload.description.length < 30) {
-      setError('Title is required and description must be at least 30 characters.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+
     setBusy(true);
     try {
       if (edit) {
@@ -108,7 +155,23 @@ export default function JobForm({ edit = false }) {
         navigate(`/recruiter/jobs/${result.job.id}`);
       }
     } catch (err) {
-      setError(err.details?.[0]?.message || err.message);
+      // The form never clears on failure: every value the user typed stays.
+      // Server zod issues arrive as [{ path, message }] — map them onto fields.
+      if (Array.isArray(err.details) && err.details.length > 0) {
+        const mapped = {};
+        for (const d of err.details) {
+          const key = String(d.path || '').split('.')[0];
+          if (key && !mapped[key]) mapped[key] = d.message;
+        }
+        if (Object.keys(mapped).length > 0) {
+          setFieldErrors((fe) => ({ ...fe, ...mapped }));
+          setFormError('Please fix the highlighted fields and save again.');
+        } else {
+          setFormError(err.details[0]?.message || err.message);
+        }
+      } else {
+        setFormError(err.message);
+      }
       setBusy(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -119,17 +182,17 @@ export default function JobForm({ edit = false }) {
       <h1 className="text-2xl font-bold tracking-tight">{edit ? 'Edit job' : 'New job posting'}</h1>
       <p className="mt-1 text-sm text-muted-foreground">Publish immediately or keep it as a draft until it's ready.</p>
 
-      {error && <Alert variant="danger" className="mt-4">{error}</Alert>}
+      {formError && <Alert variant="danger" className="mt-4">{formError}</Alert>}
 
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Job details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <FormField label="Job title" required>
+          <FormField label="Job title" required error={fieldErrors.title}>
             <Input value={form.title} onChange={set('title')} placeholder="e.g. Senior Backend Engineer" maxLength={150} />
           </FormField>
-          <FormField label="Description" required hint={`${form.description.length} characters (minimum 30). This is what candidates read first.`}>
+          <FormField label="Description" required error={fieldErrors.description} hint={`${form.description.length} characters (minimum 30). This is what candidates read first.`}>
             <Textarea value={form.description} onChange={set('description')} rows={6} maxLength={20000} placeholder="Describe the role, the team and why someone should join…" />
           </FormField>
           <FormField label="Responsibilities (one per line)">
@@ -163,8 +226,12 @@ export default function JobForm({ edit = false }) {
             </FormField>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FormField label="Min. experience (years)"><Input type="number" min="0" max="40" value={form.experienceMin} onChange={set('experienceMin')} /></FormField>
-            <FormField label="Max. experience"><Input type="number" min="0" max="50" value={form.experienceMax} onChange={set('experienceMax')} placeholder="Optional" /></FormField>
+            <FormField label="Min. experience (years)" error={fieldErrors.experienceMin}>
+              <Input type="number" min="0" max="40" value={form.experienceMin} onChange={set('experienceMin')} />
+            </FormField>
+            <FormField label="Max. experience" error={fieldErrors.experienceMax}>
+              <Input type="number" min="0" max="50" value={form.experienceMax} onChange={set('experienceMax')} placeholder="Optional" />
+            </FormField>
             <FormField label="Currency">
               <Select value={form.currency} onChange={set('currency')}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -172,8 +239,12 @@ export default function JobForm({ edit = false }) {
             </FormField>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Salary minimum"><Input type="number" min="0" value={form.salaryMin} onChange={set('salaryMin')} placeholder="Optional" /></FormField>
-            <FormField label="Salary maximum"><Input type="number" min="0" value={form.salaryMax} onChange={set('salaryMax')} placeholder="Optional" /></FormField>
+            <FormField label="Salary minimum" error={fieldErrors.salaryMin}>
+              <Input type="number" min="0" value={form.salaryMin} onChange={set('salaryMin')} placeholder="Optional" />
+            </FormField>
+            <FormField label="Salary maximum" error={fieldErrors.salaryMax}>
+              <Input type="number" min="0" value={form.salaryMax} onChange={set('salaryMax')} placeholder="Optional" />
+            </FormField>
           </div>
         </CardContent>
       </Card>
@@ -185,8 +256,9 @@ export default function JobForm({ edit = false }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
-            <FormField label="Skill" className="flex-1 min-w-40">
+            <FormField label="Skill" className="flex-1 min-w-40" htmlFor="job-skill-input">
               <Input
+                id="job-skill-input"
                 value={skillDraft}
                 onChange={(e) => setSkillDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}

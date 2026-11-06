@@ -6,14 +6,19 @@ import { StatCard, StatGrid } from '../../components/common/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { StatusBadge } from '../../components/ui/badge';
-import { PageLoader, EmptyState, Alert } from '../../components/ui/misc';
+import { PageLoader, EmptyState, Alert, ErrorState } from '../../components/ui/misc';
 import { formatDateTime, timeAgo, APPLICATION_STATUS_LABELS } from '../../lib/utils';
 
 export default function RecruiterOverview() {
   const { company, companyRole } = useAuth();
-  const { data: jobsData } = useFetch(company ? `/api/jobs/company/${company.id}` : null);
-  const { data: appsData } = useFetch('/api/applications/company?limit=6');
-  const { data: interviewsData } = useFetch('/api/interviews/company?when=upcoming&limit=5');
+  const canManageJobs = companyRole === 'ADMIN' || companyRole === 'RECRUITER';
+
+  const { data: jobsData, loading: jobsLoading, error: jobsError, refetch: refetchJobs } =
+    useFetch(company ? `/api/jobs/company/${company.id}` : null);
+  const { data: appsData, loading: appsLoading, error: appsError, refetch: refetchApps } =
+    useFetch('/api/applications/company?limit=6');
+  const { data: interviewsData, loading: interviewsLoading, error: interviewsError, refetch: refetchInterviews } =
+    useFetch('/api/interviews/company?when=upcoming&limit=5');
 
   const jobs = jobsData?.jobs || [];
   const applications = appsData?.applications || [];
@@ -32,9 +37,11 @@ export default function RecruiterOverview() {
           <h1 className="text-2xl font-bold tracking-tight">{company?.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your hiring workspace overview · you are {companyRole?.toLowerCase()}</p>
         </div>
-        <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}>
-          Post a job <ArrowRight />
-        </Button>
+        {canManageJobs && (
+          <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}>
+            Post a job <ArrowRight />
+          </Button>
+        )}
       </div>
 
       <StatGrid className="mt-6">
@@ -54,7 +61,11 @@ export default function RecruiterOverview() {
             <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/recruiter/applications')}>View all</Button>
           </CardHeader>
           <CardContent>
-            {applications.length === 0 ? (
+            {appsError ? (
+              <ErrorState title="Could not load recent applications" description={appsError.message} onRetry={refetchApps} />
+            ) : appsLoading ? (
+              <PageLoader label="Loading applications…" />
+            ) : applications.length === 0 ? (
               <EmptyState icon={FileText} title="No applications yet" description="Publish a job and applications will land here." />
             ) : (
               <ul className="divide-y">
@@ -83,7 +94,11 @@ export default function RecruiterOverview() {
             <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/recruiter/jobs')}>Manage</Button>
           </CardHeader>
           <CardContent>
-            {jobs.length === 0 ? (
+            {jobsError ? (
+              <ErrorState title="Could not load your jobs" description={jobsError.message} onRetry={refetchJobs} />
+            ) : jobsLoading ? (
+              <PageLoader label="Loading jobs…" />
+            ) : jobs.length === 0 ? (
               <EmptyState icon={Briefcase} title="No jobs yet" description="Create your first job posting to start receiving applications." />
             ) : (
               <ul className="divide-y">
@@ -116,12 +131,21 @@ export default function RecruiterOverview() {
             <div className="min-w-0 flex-1">
               <p className="font-medium">{company.name}</p>
               <p className="text-sm text-muted-foreground">
-                {interviews.length > 0
-                  ? `Next interview: ${formatDateTime(interviews[interviews.length - 1].scheduledAt)}`
-                  : 'No interviews scheduled yet'}
+                {interviewsLoading
+                  ? 'Checking interview schedule…'
+                  : interviewsError
+                    ? 'Interview schedule could not be loaded'
+                    : interviews.length > 0
+                      ? `Next interview: ${formatDateTime(interviews[interviews.length - 1].scheduledAt)}`
+                      : 'No interviews scheduled yet'}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => (window.location.href = '/recruiter/company')}>Company settings</Button>
+            {interviewsError && (
+              <Button variant="outline" size="sm" onClick={refetchInterviews}>Retry</Button>
+            )}
+            {companyRole === 'ADMIN' && (
+              <Button variant="outline" size="sm" onClick={() => (window.location.href = '/recruiter/company')}>Company settings</Button>
+            )}
           </CardContent>
         </Card>
       )}

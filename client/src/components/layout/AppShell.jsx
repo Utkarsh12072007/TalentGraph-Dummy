@@ -25,6 +25,10 @@ export default function AppShell({ nav, brand, brandTo, dark = false }) {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* keyboard users can jump straight past the navigation */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:rounded-md focus:border focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg">
+        Skip to main content
+      </a>
       {/* mobile top bar */}
       <div className="sticky top-0 z-40 border-b bg-card lg:hidden">
         <div className="flex h-14 items-center justify-between px-4">
@@ -85,7 +89,7 @@ export default function AppShell({ nav, brand, brandTo, dark = false }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 bg-background">
+        <main id="main-content" className="min-w-0 flex-1 bg-background">
           <Outlet />
         </main>
       </div>

@@ -33,6 +33,37 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
+  /* Keyboard focus visibility: a strong, consistent ring on every
+     interactive element. Inputs already style their own ring via
+     focus-visible: utilities, which take precedence over this base rule. */
+  a:focus-visible,
+  button:focus-visible,
+  [role='button']:focus-visible,
+  [role='tab']:focus-visible,
+  [role='menuitem']:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Screen-reader-only helper for skip links and table captions. */
+  .sr-only:focus-visible {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 0.75rem;
+    clip: auto;
+    white-space: nowrap;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.55rem;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  }
+
   /* nicer thin scrollbars for panels and kanban boards */
   .scroll-slim::-webkit-scrollbar {
     height: 8px;

@@ -31,7 +31,7 @@ export default function CandidateProfile() {
 
   const save = async (section, payload, id) => {
     try {
-      setEditor((e) => ({ ...e, busy: true }));
+      setEditor((e) => ({ ...e, busy: true, error: null }));
       if (section === 'basic') {
         await api.patch('/api/candidates/me/profile', payload);
       } else if (id) {
@@ -43,8 +43,8 @@ export default function CandidateProfile() {
       setEditor(null);
       refresh();
     } catch (err) {
-      setEditor((e) => ({ ...e, busy: false }));
-      toast.error(err.details?.[0]?.message || err.message);
+      // Keep the dialog open with every value intact and surface the reason.
+      setEditor((e) => ({ ...e, busy: false, error: err.details?.[0]?.message || err.message }));
     }
   };
 
@@ -304,10 +304,18 @@ function EditorDialog({ editor, onClose, onSave }) {
   const [form, setForm] = useState({});
   const [error, setError] = useState(null);
 
+  // Depend on the pieces that identify an editing session (section/mode/item)
+  // — NOT the whole editor object. The parent toggles busy/error on the same
+  // object after a failed save; re-running this effect then would wipe every
+  // value the user typed. This way the form survives failed saves.
+  const section = editor?.section;
+  const mode = editor?.mode;
+  const item = editor?.item;
+
   useEffect(() => {
-    if (!editor) return;
+    if (!section) return;
     setError(null);
-    const i = editor.item || {};
+    const i = item || {};
     setForm({
       institution: i.institution || '', degree: i.degree || '', field: i.field || '',
       startDate: iso(i.startDate), endDate: iso(i.endDate), grade: i.grade || '', description: i.description || '',
@@ -322,7 +330,7 @@ function EditorDialog({ editor, onClose, onSave }) {
     window.addEventListener('close-editor', handler);
     return () => window.removeEventListener('close-editor', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]);
+  }, [section, mode, item]);
 
   if (!editor) return null;
   const f = (k) => ({ value: form[k] ?? '', onChange: (e) => setForm((cur) => ({ ...cur, [k]: e.target.value })) });
@@ -382,7 +390,9 @@ function EditorDialog({ editor, onClose, onSave }) {
         </>
       }
     >
-      {error && <p className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">{error}</p>}
+      {(error || editor.error) && (
+        <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">{error || editor.error}</p>
+      )}
       <div className="space-y-4">
         {editor.section === 'basic' && (
           <>

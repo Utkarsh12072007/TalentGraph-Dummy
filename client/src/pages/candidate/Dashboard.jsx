@@ -7,15 +7,15 @@ import { JobCard } from '../../components/common/JobCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { StatusBadge } from '../../components/ui/badge';
-import { Progress, PageLoader, EmptyState, Alert } from '../../components/ui/misc';
+import { Progress, PageLoader, EmptyState, Alert, ErrorState } from '../../components/ui/misc';
 import { profileCompletion, formatDateTime, APPLICATION_STATUS_LABELS } from '../../lib/utils';
 
 export default function CandidateDashboard() {
   const { user } = useAuth();
-  const { data: profileData, loading: loadingProfile } = useFetch('/api/candidates/me/profile');
-  const { data: appsData } = useFetch('/api/applications/mine');
-  const { data: interviewsData } = useFetch('/api/interviews/mine');
-  const { data: jobsData } = useFetch('/api/jobs?limit=4&sort=recent');
+  const { data: profileData, loading: loadingProfile, error: profileError, refetch: refetchProfile } = useFetch('/api/candidates/me/profile');
+  const { data: appsData, error: appsError, refetch: refetchApps } = useFetch('/api/applications/mine');
+  const { data: interviewsData, error: interviewsError, refetch: refetchInterviews } = useFetch('/api/interviews/mine');
+  const { data: jobsData, error: jobsError, refetch: refetchJobs } = useFetch('/api/jobs?limit=4&sort=recent');
 
   const profile = profileData?.profile;
   const completion = profileCompletion(profile);
@@ -29,7 +29,18 @@ export default function CandidateDashboard() {
     shortlisted: applications.filter((a) => a.status === 'SHORTLISTED').length,
   };
 
-  if (loadingProfile) return <div className="page-container py-10"><PageLoader /></div>;
+  if (loadingProfile) return <div className="page-container py-10"><PageLoader label="Preparing your dashboard…" /></div>;
+  if (profileError) {
+    return (
+      <div className="page-container py-10">
+        <ErrorState
+          title="Could not load your dashboard"
+          description={profileError.message}
+          onRetry={refetchProfile}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="page-container py-8">
@@ -74,7 +85,9 @@ export default function CandidateDashboard() {
             <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/interviews')}>View all</Button>
           </CardHeader>
           <CardContent>
-            {upcoming.length === 0 ? (
+            {interviewsError ? (
+              <ErrorState title="Could not load interviews" description={interviewsError.message} onRetry={refetchInterviews} />
+            ) : upcoming.length === 0 ? (
               <EmptyState icon={CalendarClock} title="No interviews scheduled" description="When a recruiter invites you to an interview, it appears here with time and details." />
             ) : (
               <ul className="space-y-3">
@@ -103,7 +116,9 @@ export default function CandidateDashboard() {
             <CardDescription>Latest status changes</CardDescription>
           </CardHeader>
           <CardContent>
-            {applications.length === 0 ? (
+            {appsError ? (
+              <ErrorState title="Could not load applications" description={appsError.message} onRetry={refetchApps} />
+            ) : applications.length === 0 ? (
               <EmptyState icon={FileText} title="No applications yet" description="Discover open roles and send your first application." />
             ) : (
               <ul className="space-y-3">
@@ -128,7 +143,9 @@ export default function CandidateDashboard() {
           <Link to="/discover" className="text-sm text-primary hover:underline">Browse all</Link>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {(jobsData?.jobs || []).map((job) => <JobCard key={job.id} job={job} to={`/jobs/${job.id}`} />)}
+          {jobsError ? (
+            <div className="sm:col-span-2"><ErrorState title="Could not load recent jobs" description={jobsError.message} onRetry={refetchJobs} /></div>
+          ) : (jobsData?.jobs || []).map((job) => <JobCard key={job.id} job={job} to={`/jobs/${job.id}`} />)}
         </div>
       </div>
     </div>

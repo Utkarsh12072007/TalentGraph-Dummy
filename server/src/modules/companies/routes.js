@@ -36,11 +36,12 @@ router.get(
   controller.getOne
 );
 
-// Member management (company admins only)
+// Member directory — readable by every company member. Scheduling an
+// interview means assigning interviewers, so INTERVIEWERs need the member
+// list too. All member MUTATIONS stay ADMIN-only (see routes below).
 router.get(
   '/:companyId/members',
   requireCompanyMember((req) => req.params.companyId),
-  requireCompanyRole('ADMIN'),
   controller.listMembers
 );
 

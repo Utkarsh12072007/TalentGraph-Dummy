@@ -28,8 +28,10 @@ export default function RecruiterCompany() {
   );
   const [form, setForm] = useState(null); // lazy init from company
   const [busy, setBusy] = useState(false);
+  const [profileErrors, setProfileErrors] = useState({});
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ email: '', role: 'RECRUITER' });
+  const [addError, setAddError] = useState(null);
   const [roleTarget, setRoleTarget] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
 
@@ -41,10 +43,14 @@ export default function RecruiterCompany() {
     name: company.name || '', website: company.website || '', industry: company.industry || '',
     size: company.size || '', location: company.location || '', description: company.description || '',
   };
-  const set = (k) => (e) => setForm((f) => ({ ...(f || profile), [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...(f || profile), [k]: e.target.value }));
+    setProfileErrors((fe) => (fe[k] ? { ...fe, [k]: undefined } : fe));
+  };
 
   const saveProfile = async () => {
     setBusy(true);
+    setProfileErrors({});
     try {
       await api.patch(`/api/companies/${company.id}`, {
         name: profile.name.trim(),
@@ -57,7 +63,16 @@ export default function RecruiterCompany() {
       await refresh();
       toast.success('Company profile updated');
     } catch (err) {
-      toast.error(err.message);
+      if (Array.isArray(err.details) && err.details.length > 0) {
+        const mapped = {};
+        for (const d of err.details) {
+          const key = String(d.path || '').split('.')[0];
+          if (key && !mapped[key]) mapped[key] = d.message;
+        }
+        setProfileErrors(mapped);
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -82,6 +97,7 @@ export default function RecruiterCompany() {
   const members = membersData?.members || [];
 
   const addMember = async () => {
+    setAddError(null);
     try {
       await api.post(`/api/companies/${company.id}/members`, addForm);
       toast.success(`${addForm.email} added to your company`);
@@ -89,7 +105,8 @@ export default function RecruiterCompany() {
       setAddForm({ email: '', role: 'RECRUITER' });
       refetchMembers();
     } catch (err) {
-      toast.error(err.message);
+      // e.g. "user not found / already in a company" — show it beside the email.
+      setAddError(err.details?.[0]?.message || err.message);
     }
   };
 
@@ -153,21 +170,21 @@ export default function RecruiterCompany() {
                 </div>
               )}
             </div>
-            <FormField label="Company name" required><Input value={profile.name} onChange={set('name')} disabled={!isAdmin} /></FormField>
+            <FormField label="Company name" required error={profileErrors.name}><Input value={profile.name} onChange={set('name')} disabled={!isAdmin} /></FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Website"><Input type="url" value={profile.website} onChange={set('website')} disabled={!isAdmin} placeholder="https://…" /></FormField>
-              <FormField label="Industry"><Input value={profile.industry} onChange={set('industry')} disabled={!isAdmin} /></FormField>
+              <FormField label="Website" error={profileErrors.website}><Input type="url" value={profile.website} onChange={set('website')} disabled={!isAdmin} placeholder="https://…" /></FormField>
+              <FormField label="Industry" error={profileErrors.industry}><Input value={profile.industry} onChange={set('industry')} disabled={!isAdmin} /></FormField>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Company size">
+              <FormField label="Company size" error={profileErrors.size}>
                 <Select value={profile.size} onChange={set('size')} disabled={!isAdmin}>
                   <option value="">Select…</option>
                   {SIZES.map((s) => <option key={s} value={s}>{s} people</option>)}
                 </Select>
               </FormField>
-              <FormField label="Location"><Input value={profile.location} onChange={set('location')} disabled={!isAdmin} /></FormField>
+              <FormField label="Location" error={profileErrors.location}><Input value={profile.location} onChange={set('location')} disabled={!isAdmin} /></FormField>
             </div>
-            <FormField label="About the company"><Textarea value={profile.description} onChange={set('description')} disabled={!isAdmin} rows={4} /></FormField>
+            <FormField label="About the company" error={profileErrors.description}><Textarea value={profile.description} onChange={set('description')} disabled={!isAdmin} rows={4} /></FormField>
             {isAdmin && <Button onClick={saveProfile} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>}
           </CardContent>
         </Card>
@@ -233,8 +250,16 @@ export default function RecruiterCompany() {
         }
       >
         <div className="space-y-4">
-          <FormField label="Email of registered user" required>
-            <Input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} placeholder="colleague@example.com" />
+          <FormField label="Email of registered user" required error={addError}>
+            <Input
+              type="email"
+              value={addForm.email}
+              onChange={(e) => {
+                setAddForm({ ...addForm, email: e.target.value });
+                if (addError) setAddError(null);
+              }}
+              placeholder="colleague@example.com"
+            />
           </FormField>
           <FormField label="Role">
             <Select value={addForm.role} onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}>

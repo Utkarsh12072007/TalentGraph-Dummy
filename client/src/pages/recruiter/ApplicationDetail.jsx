@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Badge, StatusBadge } from '../../components/ui/badge';
 import { Input, Textarea, Select, FormField } from '../../components/ui/form';
 import { Dialog } from '../../components/ui/dialog';
-import { Avatar, PageLoader, EmptyState, Alert } from '../../components/ui/misc';
+import { Avatar, PageLoader, EmptyState, Alert, ErrorState } from '../../components/ui/misc';
 import { useToast } from '../../components/ui/toast';
 import { APPLICATION_STATUS_LABELS, formatDate, formatDateTime, EMPLOYMENT_LABELS, COMPANY_ROLE_LABELS } from '../../lib/utils';
 import { useAuth } from '../../lib/auth';
@@ -29,15 +29,21 @@ const TRANSITIONS = {
 
 export default function ApplicationDetail() {
   const { applicationId } = useParams();
-  const { company, user } = useAuth();
+  const { company, companyRole, user } = useAuth();
   const toast = useToast();
 
   const { data, loading, error, refetch } = useFetch(`/api/applications/${applicationId}`);
   const application = data?.application;
   const isCompany = data?.viewerIsCompany;
 
+  // Server rules mirrored for the UI: pipeline decisions (status changes) and
+  // private notes are ADMIN/RECRUITER actions. Interviewers see the workspace,
+  // give interview feedback, and can schedule interview logistics — but the
+  // status buttons and note composer are hidden for them.
+  const canDecide = isCompany && (companyRole === 'ADMIN' || companyRole === 'RECRUITER');
+
   const { data: membersData } = useFetch(isCompany ? `/api/companies/${company?.id}/members` : null);
-  const members = (membersData?.members || []).filter((m) => m.role !== 'ADMIN' || true);
+  const members = membersData?.members || [];
 
   const [note, setNote] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -46,7 +52,15 @@ export default function ApplicationDetail() {
 
   if (loading) return <div className="page-container py-10"><PageLoader /></div>;
   if (error || !application) {
-    return <div className="page-container py-10"><EmptyState title="Application not found" description={error?.message} action={<Link to="/recruiter/applications" className="text-primary hover:underline">Back to applications</Link>} /></div>;
+    return (
+      <div className="page-container py-10">
+        {error && error.status !== 404 ? (
+          <ErrorState title="Could not load this application" description={error.message} onRetry={refetch} />
+        ) : (
+          <EmptyState title="Application not found" description={error?.message} action={<Link to="/recruiter/applications" className="text-primary hover:underline">Back to applications</Link>} />
+        )}
+      </div>
+    );
   }
 
   const candidate = application.candidateProfile;
@@ -106,15 +120,29 @@ export default function ApplicationDetail() {
       </div>
 
       {/* pipeline actions */}
-      {isCompany && allowedNext.length > 0 && (
+      {isCompany && (canDecide || allowedNext.length > 0) && (
         <Card className="mt-5">
           <CardContent className="flex flex-wrap items-center gap-2 p-4">
-            <p className="mr-2 text-sm font-medium">Move candidate to:</p>
-            {allowedNext.map((s) => (
-              <Button key={s} size="sm" variant={s === 'REJECTED' ? 'destructive' : s === 'OFFERED' ? 'default' : 'outline'} disabled={busy} onClick={() => changeStatus(s)}>
-                {APPLICATION_STATUS_LABELS[s]}
-              </Button>
-            ))}
+            {canDecide && allowedNext.length > 0 && (
+              <>
+                <p className="mr-2 text-sm font-medium">Move candidate to:</p>
+                {allowedNext.map((s) => (
+                  <Button key={s} size="sm" variant={s === 'REJECTED' ? 'destructive' : s === 'OFFERED' ? 'default' : 'outline'} disabled={busy} onClick={() => changeStatus(s)}>
+                    {APPLICATION_STATUS_LABELS[s]}
+                  </Button>
+                ))}
+              </>
+            )}
+            {canDecide && allowedNext.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                This application is in a final state — no further pipeline changes are possible.
+              </p>
+            )}
+            {!canDecide && (
+              <p className="text-sm text-muted-foreground">
+                You are viewing as an interviewer — pipeline decisions are made by recruiters and company admins.
+              </p>
+            )}
             <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setScheduleOpen(true)} disabled={application.status === 'WITHDRAWN' || application.status === 'REJECTED'}>
               <CalendarPlus /> Schedule interview
             </Button>
@@ -242,8 +270,14 @@ export default function ApplicationDetail() {
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><StickyNote className="h-4 w-4" />Private notes</CardTitle><CardDescription>Only visible to your company</CardDescription></CardHeader>
               <CardContent>
-                <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Strong React portfolio, verify system design depth…" />
-                <Button size="sm" className="mt-2 w-full" onClick={addNote} disabled={busy || !note.trim()}>Add note</Button>
+                {canDecide ? (
+                  <>
+                    <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Strong React portfolio, verify system design depth…" aria-label="New private note" />
+                    <Button size="sm" className="mt-2 w-full" onClick={addNote} disabled={busy || !note.trim()}>Add note</Button>
+                  </>
+                ) : (
+                  <p className="mb-3 text-xs text-muted-foreground">Notes are read-only for interviewers — only company admins and recruiters can add them.</p>
+                )}
                 <ul className="mt-4 space-y-3">
                   {(application.notes || []).map((n) => (
                     <li key={n.id} className="rounded-md bg-muted p-3">

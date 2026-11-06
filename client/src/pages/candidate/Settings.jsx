@@ -4,7 +4,6 @@ import { api } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input, FormField } from '../../components/ui/form';
 import { Button } from '../../components/ui/button';
-import { Alert } from '../../components/ui/misc';
 import { useToast } from '../../components/ui/toast';
 
 export default function Settings() {
@@ -36,7 +35,7 @@ export default function Settings() {
     e.preventDefault();
     setPwdError(null);
     if (pwd.newPassword.length < 8) {
-      setPwdError('New password must be at least 8 characters.');
+      setPwdError({ newPassword: 'New password must be at least 8 characters.' });
       return;
     }
     setPwdBusy(true);
@@ -46,7 +45,10 @@ export default function Settings() {
       toast.success('Password changed. Other sessions were signed out.');
       await refresh();
     } catch (err) {
-      setPwdError(err.details?.[0]?.message || err.message);
+      // Wrong current password vs weak new password — point at the right field.
+      const detail = err.details?.[0]?.message || err.message;
+      const isCurrent = /current|incorrect|wrong/i.test(detail);
+      setPwdError(isCurrent ? { currentPassword: detail } : { newPassword: detail });
     } finally {
       setPwdBusy(false);
     }
@@ -89,12 +91,11 @@ export default function Settings() {
           <CardDescription>Changing your password signs out all other devices.</CardDescription>
         </CardHeader>
         <CardContent>
-          {pwdError && <Alert variant="danger" className="mb-4">{pwdError}</Alert>}
           <form onSubmit={changePassword} className="space-y-4">
-            <FormField label="Current password" required>
+            <FormField label="Current password" required error={typeof pwdError === 'object' ? pwdError.currentPassword : undefined}>
               <Input type="password" autoComplete="current-password" value={pwd.currentPassword} onChange={(e) => setPwd({ ...pwd, currentPassword: e.target.value })} required />
             </FormField>
-            <FormField label="New password" required hint="At least 8 characters.">
+            <FormField label="New password" required hint="At least 8 characters." error={typeof pwdError === 'object' ? pwdError.newPassword : undefined}>
               <Input type="password" autoComplete="new-password" value={pwd.newPassword} onChange={(e) => setPwd({ ...pwd, newPassword: e.target.value })} required minLength={8} />
             </FormField>
             <Button type="submit" disabled={pwdBusy}>{pwdBusy ? 'Updating…' : 'Update password'}</Button>

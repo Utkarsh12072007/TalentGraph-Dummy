@@ -1,8 +1,8 @@
-import { forwardRef } from 'react';
+import { forwardRef, useId, cloneElement, isValidElement } from 'react';
 import { cn } from '../../lib/utils';
 
 const baseField =
-  'flex w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
+  'flex w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/30';
 
 export const Input = forwardRef(({ className, type = 'text', ...props }, ref) => (
   <input ref={ref} type={type} className={cn(baseField, 'h-9', className)} {...props} />
@@ -34,7 +34,21 @@ export const Label = forwardRef(({ className, ...props }, ref) => (
 Label.displayName = 'Label';
 
 // FormField: label + control + error message in one consistent block.
+// When `error` is set, the message renders beside/below the control and the
+// control itself is wired for screen readers via aria-invalid +
+// aria-describedby (and `invalid` styles the border red).
 export function FormField({ label, error, hint, required, children, className }) {
+  const errorId = useId();
+  const hintId = useId();
+
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+  const control = isValidElement(children)
+    ? cloneElement(children, {
+        'aria-invalid': error ? true : undefined,
+        'aria-describedby': describedBy,
+      })
+    : children;
+
   return (
     <div className={cn('w-full', className)}>
       {label && (
@@ -43,9 +57,15 @@ export function FormField({ label, error, hint, required, children, className })
           {required && <span className="ml-0.5 text-destructive">*</span>}
         </Label>
       )}
-      {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      {control}
+      {hint && !error && (
+        <p id={hintId} className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      )}
+      {error && (
+        <p id={errorId} role="alert" className="mt-1 flex items-start gap-1 text-xs font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

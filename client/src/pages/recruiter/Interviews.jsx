@@ -7,7 +7,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/form';
-import { PageLoader, EmptyState } from '../../components/ui/misc';
+import { PageLoader, EmptyState, ErrorState } from '../../components/ui/misc';
 import { useToast } from '../../components/ui/toast';
 import { formatDateTime } from '../../lib/utils';
 
@@ -16,7 +16,7 @@ export default function RecruiterInterviews() {
   const { user } = useAuth();
   const toast = useToast();
   const [when, setWhen] = useState('upcoming');
-  const { data, loading, refetch } = useFetch(`/api/interviews/company?when=${when}`);
+  const { data, loading, error, refetch } = useFetch(`/api/interviews/company?when=${when}`);
   const interviews = data?.interviews || [];
 
   const act = async (interview, action) => {
@@ -43,9 +43,15 @@ export default function RecruiterInterviews() {
         </Select>
       </div>
 
-      {loading && <div className="py-10"><PageLoader /></div>}
+      {loading && <div className="py-10"><PageLoader label="Loading interviews…" /></div>}
 
-      {!loading && interviews.length === 0 && (
+      {!loading && error && (
+        <div className="py-10">
+          <ErrorState title="Could not load interviews" description={error.message} onRetry={refetch} />
+        </div>
+      )}
+
+      {!loading && !error && interviews.length === 0 && (
         <EmptyState
           className="mt-6"
           icon={CalendarClock}
@@ -54,7 +60,7 @@ export default function RecruiterInterviews() {
         />
       )}
 
-      {!loading && interviews.length > 0 && (
+      {!loading && !error && interviews.length > 0 && (
         <div className="mt-6 space-y-3">
           {interviews.map((i) => (
             <Card key={i.id}>

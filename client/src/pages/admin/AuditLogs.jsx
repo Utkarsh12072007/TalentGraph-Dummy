@@ -41,11 +41,11 @@ export default function AdminAuditLogs() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Action</th>
-                    <th className="px-4 py-3 font-medium">Actor</th>
-                    <th className="px-4 py-3 font-medium">Entity</th>
-                    <th className="hidden px-4 py-3 font-medium lg:table-cell">Details</th>
-                    <th className="px-4 py-3 font-medium">When</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Action</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Actor</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Entity</th>
+                    <th scope="col" className="hidden px-4 py-3 font-medium lg:table-cell">Details</th>
+                    <th scope="col" className="px-4 py-3 font-medium">When</th>
                   </tr>
                 </thead>
                 <tbody>

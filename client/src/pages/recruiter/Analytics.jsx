@@ -2,7 +2,7 @@ import { useFetch } from '../../lib/hooks';
 import { useAuth } from '../../lib/auth';
 import { StatCard, StatGrid } from '../../components/common/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { PageLoader } from '../../components/ui/misc';
+import { PageLoader, ErrorState, EmptyState } from '../../components/ui/misc';
 import { BarChart, HBarList, DonutChart } from '../../components/common/Charts';
 import { APPLICATION_STATUS_LABELS } from '../../lib/utils';
 
@@ -13,11 +13,28 @@ const STATUS_COLORS = {
 
 export default function Analytics() {
   const { company } = useAuth();
-  const { data, loading } = useFetch(company ? '/api/analytics/company' : null);
+  const { data, loading, error, refetch } = useFetch(company ? '/api/analytics/company' : null);
   const a = data?.analytics;
 
-  if (loading) return <div className="page-container py-10"><PageLoader /></div>;
-  if (!a) return null;
+  if (loading) return <div className="page-container py-10"><PageLoader label="Crunching your hiring numbers…" /></div>;
+  if (error) {
+    return (
+      <div className="page-container py-10">
+        <ErrorState
+          title="Could not load analytics"
+          description={error.message}
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
+  if (!a) {
+    return (
+      <div className="page-container py-10">
+        <EmptyState title="No analytics yet" description="Once applications arrive, your hiring metrics appear here." />
+      </div>
+    );
+  }
 
   const daily = (a.daily || []).map((d) => ({
     label: new Date(d.day).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),

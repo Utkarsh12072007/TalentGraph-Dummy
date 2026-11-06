@@ -17,14 +17,19 @@ export default function SignUp() {
     fullName: '', email: '', password: '',
     companyName: '', companyIndustry: '',
   });
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null); // general (non-field) error
+  const [fieldErrors, setFieldErrors] = useState({}); // { fieldName: message }
   const [busy, setBusy] = useState(false);
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set = (key) => (e) => {
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+    setFieldErrors((fe) => (fe[key] ? { ...fe, [key]: undefined } : fe));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     setBusy(true);
     try {
       const payload = {
@@ -40,8 +45,22 @@ export default function SignUp() {
       const user = await register(payload);
       navigate(homeFor(user), { replace: true });
     } catch (err) {
-      const firstDetail = err.details?.[0]?.message;
-      setError(firstDetail || err.message);
+      // Validation issues land beside their field; everything else (e.g. the
+      // email already registered) shows as a general alert. Typed values stay.
+      if (Array.isArray(err.details) && err.details.length > 0) {
+        const mapped = {};
+        for (const d of err.details) {
+          const key = String(d.path || '').split('.')[0];
+          if (key && !mapped[key]) mapped[key] = d.message;
+        }
+        if (Object.keys(mapped).length > 0) setFieldErrors(mapped);
+        else setError(err.details[0]?.message || err.message);
+      } else if (err.status === 409) {
+        // Duplicate email — point at the email field directly.
+        setFieldErrors({ email: err.message });
+      } else {
+        setError(err.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -80,22 +99,22 @@ export default function SignUp() {
           {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
           <form onSubmit={submit} className="space-y-4" noValidate>
-            <FormField label="Full name" required>
-              <Input value={form.fullName} onChange={set('fullName')} required minLength={2} />
+            <FormField label="Full name" required error={fieldErrors.fullName}>
+              <Input value={form.fullName} onChange={set('fullName')} required minLength={2} autoComplete="name" />
             </FormField>
-            <FormField label="Email" required>
+            <FormField label="Email" required error={fieldErrors.email}>
               <Input type="email" autoComplete="email" value={form.email} onChange={set('email')} required />
             </FormField>
-            <FormField label="Password" required hint="At least 8 characters.">
+            <FormField label="Password" required hint="At least 8 characters." error={fieldErrors.password}>
               <Input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required minLength={8} />
             </FormField>
 
             {role === 'RECRUITER' && (
               <>
-                <FormField label="Company name" hint="Creates your company workspace — you become its administrator. You can also join an existing company later.">
+                <FormField label="Company name" hint="Creates your company workspace — you become its administrator. You can also join an existing company later." error={fieldErrors.companyName}>
                   <Input value={form.companyName} onChange={set('companyName')} placeholder="e.g. Acme Robotics" />
                 </FormField>
-                <FormField label="Industry (optional)">
+                <FormField label="Industry (optional)" error={fieldErrors.companyIndustry}>
                   <Input value={form.companyIndustry} onChange={set('companyIndustry')} placeholder="e.g. Software, Healthcare" />
                 </FormField>
               </>

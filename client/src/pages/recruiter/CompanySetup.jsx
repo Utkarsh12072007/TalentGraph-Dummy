@@ -18,15 +18,20 @@ export default function CompanySetup() {
   const toast = useToast();
   const [form, setForm] = useState({ name: '', website: '', industry: '', size: '', location: '', description: '' });
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    setFieldErrors((fe) => (fe[k] ? { ...fe, [k]: undefined } : fe));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setFormError(null);
+    setFieldErrors({});
     if (!form.name.trim()) {
-      setError('Company name is required.');
+      setFieldErrors({ name: 'Company name is required.' });
       return;
     }
     setBusy(true);
@@ -36,7 +41,18 @@ export default function CompanySetup() {
       await refresh();
       navigate('/recruiter');
     } catch (err) {
-      setError(err.message);
+      // Values stay in the form; validation issues appear beside their fields.
+      if (Array.isArray(err.details) && err.details.length > 0) {
+        const mapped = {};
+        for (const d of err.details) {
+          const key = String(d.path || '').split('.')[0];
+          if (key && !mapped[key]) mapped[key] = d.message;
+        }
+        if (Object.keys(mapped).length > 0) setFieldErrors(mapped);
+        else setFormError(err.details[0]?.message || err.message);
+      } else {
+        setFormError(err.message);
+      }
       setBusy(false);
     }
   };
@@ -51,25 +67,25 @@ export default function CompanySetup() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
+          {formError && <Alert variant="danger" className="mb-4">{formError}</Alert>}
           <form onSubmit={submit} className="space-y-4" noValidate>
-            <FormField label="Company name" required>
+            <FormField label="Company name" required error={fieldErrors.name}>
               <Input value={form.name} onChange={set('name')} placeholder="e.g. Acme Robotics" />
             </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Website"><Input type="url" value={form.website} onChange={set('website')} placeholder="https://…" /></FormField>
-              <FormField label="Industry"><Input value={form.industry} onChange={set('industry')} placeholder="e.g. Software" /></FormField>
+              <FormField label="Website" error={fieldErrors.website}><Input type="url" value={form.website} onChange={set('website')} placeholder="https://…" /></FormField>
+              <FormField label="Industry" error={fieldErrors.industry}><Input value={form.industry} onChange={set('industry')} placeholder="e.g. Software" /></FormField>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Company size">
+              <FormField label="Company size" error={fieldErrors.size}>
                 <Select value={form.size} onChange={set('size')}>
                   <option value="">Select…</option>
                   {SIZES.map((s) => <option key={s} value={s}>{s} people</option>)}
                 </Select>
               </FormField>
-              <FormField label="Location"><Input value={form.location} onChange={set('location')} placeholder="City, Country" /></FormField>
+              <FormField label="Location" error={fieldErrors.location}><Input value={form.location} onChange={set('location')} placeholder="City, Country" /></FormField>
             </div>
-            <FormField label="About the company">
+            <FormField label="About the company" error={fieldErrors.description}>
               <Textarea value={form.description} onChange={set('description')} placeholder="What does your company do?" />
             </FormField>
             <Button type="submit" className="w-full" disabled={busy}>

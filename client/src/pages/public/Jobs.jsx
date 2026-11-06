@@ -6,7 +6,7 @@ import { useAuth } from '../../lib/auth';
 import { Input, Select, Label } from '../../components/ui/form';
 import { JobCard } from '../../components/common/JobCard';
 import { Pagination } from '../../components/common/Pagination';
-import { PageLoader, EmptyState } from '../../components/ui/misc';
+import { PageLoader, EmptyState, ErrorState } from '../../components/ui/misc';
 import { Button } from '../../components/ui/button';
 import { WORK_MODE_LABELS, EMPLOYMENT_LABELS, EXPERIENCE_LABELS } from '../../lib/utils';
 
@@ -37,7 +37,7 @@ export default function Jobs() {
     return `/api/jobs?${qs.toString()}`;
   }, [filters]);
 
-  const { data, loading, error } = useFetch(query);
+  const { data, loading, error, refetch } = useFetch(query);
 
   const setFilter = (key, value) => {
     const next = new URLSearchParams(params);
@@ -120,7 +120,7 @@ export default function Jobs() {
       {/* results */}
       <div className="mt-6 space-y-3">
         {loading && <PageLoader label="Searching jobs…" />}
-        {error && <EmptyState title="Could not load jobs" description={error.message} />}
+        {error && <ErrorState title="Could not load jobs" description={error.message} onRetry={refetch} />}
         {!loading && !error && data?.jobs?.length === 0 && (
           <EmptyState
             icon={SearchIcon}

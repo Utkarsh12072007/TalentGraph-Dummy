@@ -1,4 +1,6 @@
+import { AlertTriangle, RotateCw } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Button } from './button';
 
 export function Skeleton({ className, ...props }) {
   return <div className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />;
@@ -70,6 +72,29 @@ export function Alert({ variant = 'info', title, children, className }) {
     <div className={cn('rounded-md border p-3 text-sm', styles[variant], className)} role="alert">
       {title && <p className="font-medium">{title}</p>}
       {children}
+    </div>
+  );
+}
+
+// Visible failure state with a retry action. Used everywhere a useFetch()
+// request can fail — dashboards, analytics, lists — so a broken request is
+// never a silent empty screen.
+export function ErrorState({ title = 'Could not load this content', description, onRetry, className }) {
+  return (
+    <div
+      role="alert"
+      className={cn('flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-card/50 px-6 py-10 text-center', className)}
+    >
+      <AlertTriangle className="h-9 w-9 text-amber-600" aria-hidden />
+      <div>
+        <p className="font-medium">{title}</p>
+        {description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}
+      </div>
+      {onRetry && (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <RotateCw className="h-4 w-4" /> Try again
+        </Button>
+      )}
     </div>
   );
 }
