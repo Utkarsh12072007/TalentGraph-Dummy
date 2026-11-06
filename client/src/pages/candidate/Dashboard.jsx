@@ -38,7 +38,7 @@ export default function CandidateDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Welcome back, {user?.fullName?.split(' ')[0]}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Here is where your job search stands today.</p>
         </div>
-        <Button asChild={undefined} onClick={() => (window.location.href = '/discover')}>
+        <Button onClick={() => (window.location.href = '/discover')}>
           Find jobs <ArrowRight />
         </Button>
       </div>

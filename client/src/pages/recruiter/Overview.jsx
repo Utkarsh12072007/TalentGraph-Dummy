@@ -51,7 +51,7 @@ export default function RecruiterOverview() {
               <CardTitle>Recent applications</CardTitle>
               <CardDescription>Latest candidates across all your jobs</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild={undefined} onClick={() => (window.location.href = '/recruiter/applications')}>View all</Button>
+            <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/recruiter/applications')}>View all</Button>
           </CardHeader>
           <CardContent>
             {applications.length === 0 ? (

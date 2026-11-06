@@ -23,7 +23,7 @@ function Hero() {
           to publish jobs, review applications, run interviews, and make hiring decisions.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button size="lg" asChild={false} onClick={() => (window.location.href = '/jobs')}>
+          <Button size="lg" onClick={() => (window.location.href = '/jobs')}>
             Find Opportunities <ArrowRight />
           </Button>
           <Button size="lg" variant="outline" onClick={() => (window.location.href = '/signup?role=recruiter')}>

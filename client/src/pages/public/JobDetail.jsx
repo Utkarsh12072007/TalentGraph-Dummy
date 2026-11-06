@@ -60,7 +60,7 @@ export default function JobDetail() {
         <EmptyState
           title="Job not available"
           description="This job may have been closed, archived or removed."
-          action={<Button variant="outline" asChild={undefined} onClick={() => navigate('/jobs')}>Back to jobs</Button>}
+          action={<Button variant="outline" onClick={() => navigate('/jobs')}>Back to jobs</Button>}
         />
       </div>
     );

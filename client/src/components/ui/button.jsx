@@ -26,7 +26,9 @@ const buttonVariants = cva(
   }
 );
 
-const Button = forwardRef(({ className, variant, size, type = 'button', ...props }, ref) => (
+// `asChild` is destructured and dropped on purpose: this Button has no Radix
+// Slot, so a stray asChild prop must never reach the DOM <button> element.
+const Button = forwardRef(({ className, variant, size, type = 'button', asChild, ...props }, ref) => (
   <button ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />
 ));
 Button.displayName = 'Button';
