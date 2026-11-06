@@ -8,8 +8,13 @@
 // Run: npm run db:seed
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-if (process.env.NODE_ENV === 'production') {
+// Production databases are protected by default. Deliberate seeding is still
+// possible (e.g. creating the first admin on a fresh deployment) by setting
+// ALLOW_DEMO_SEED=1 — the seed only touches @demo.dev accounts plus the
+// platform admin from ADMIN_EMAIL / ADMIN_PASSWORD.
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1') {
   console.error('[seed] Refusing to seed a production database.');
+  console.error('[seed] To seed a fresh deployment anyway (demo accounts + admin), run with ALLOW_DEMO_SEED=1.');
   process.exit(1);
 }
 

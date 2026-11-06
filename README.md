@@ -207,14 +207,21 @@ npm test
 
 ## 7. Deployment (prepared, not exercised here)
 
+> **Step-by-step deployment guide: [DEPLOY.md](DEPLOY.md)** — recommended free
+> path: GitHub + Render (one web service, API + SPA on one origin) + Neon
+> (PostgreSQL). `render.yaml` Blueprint included.
+
 - **Docker:** `docker compose up --build` runs Postgres + API + nginx-served SPA
   (nginx proxies `/api` to the API container).
-- **Render (backend):** create a Web Service from the repo root —
-  build `npm ci && npx prisma generate`, start `node server/src/server.js`,
-  env vars `DATABASE_URL` (Render PostgreSQL), `JWT_SECRET`, `NODE_ENV=production`.
-- **Vercel (frontend):** import the repo with root `client/`, framework Vite,
-  build `npx vite build`, output `client/dist`; add a rewrite so `/api/*` and
-  `/uploads/*` proxy to the Render URL (or use a custom nginx/gateway).
+- **Render (single service, recommended):** the Blueprint in `render.yaml`
+  deploys everything as one web service — build
+  `npm ci && npx prisma generate && npx prisma db push && npx vite build`,
+  start `node server/src/server.js`, env vars `DATABASE_URL`, `JWT_SECRET`
+  (auto-generated), `NODE_ENV=production`. Express serves both the API and the
+  built SPA from one origin. Full walkthrough in [DEPLOY.md](DEPLOY.md).
+- **Split hosting (Vercel + separate API):** possible but not recommended —
+  cross-domain auth cookies require `SameSite=None` + CORS credentials, which
+  adds security complexity for no benefit over single-origin.
 
 > ⚠️ **Local file storage limitation (known, deliberate):** resumes and logos are
 > stored on the local filesystem (`server/uploads/`). Render's disk is **ephemeral**

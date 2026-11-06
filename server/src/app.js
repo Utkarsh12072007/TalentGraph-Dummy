@@ -10,6 +10,7 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
 
 const env = require('./config/env');
 const authRoutes = require('./modules/auth/routes');
@@ -73,6 +74,24 @@ function createApp() {
   const openapiDocument = require('./docs/openapi');
   app.use('/api/docs', serve, setup(openapiDocument, { customSiteTitle: 'TalentGraph API' }));
   app.get('/api/openapi.json', (_req, res) => res.json(openapiDocument));
+
+  // Production single-service mode: when the SPA has been built (client/dist),
+  // Express serves it on the same origin as the API. One service, one origin —
+  // HTTP-only cookies need no SameSite/CORS gymnastics and deep links like
+  // /jobs or /recruiter/applications survive a hard refresh via the fallback.
+  // Gated on NODE_ENV=production so development (Vite + HMR) and tests are
+  // completely unaffected by the presence of a built bundle.
+  const distDir = path.join(__dirname, '..', '..', 'client', 'dist');
+  if (env.isProd && fs.existsSync(path.join(distDir, 'index.html'))) {
+    app.use(express.static(distDir));
+
+    // SPA fallback — AFTER the API routers above, so /api/* still 404s as JSON.
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

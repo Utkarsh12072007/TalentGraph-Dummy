@@ -1,0 +1,38 @@
+# Render Blueprint — deploys TalentGraph as ONE web service.
+#
+# The Express API serves the built React SPA (client/dist) on the same origin,
+# so the deployed site needs exactly one URL — cookies and routing need no
+# CORS or SameSite configuration.
+#
+# Use it: Render Dashboard -> New + -> Blueprint -> pick this repo.
+# You will be asked to paste DATABASE_URL (see DEPLOY.md, step 3).
+#
+# Database options for DATABASE_URL:
+#   - Neon (recommended): free tier, does not expire  -> https://neon.tech
+#   - Render PostgreSQL:  one-click, but the free database EXPIRES AFTER
+#     30 DAYS — fine for a short demo, not for a persistent share.
+
+services:
+  - type: web
+    name: talentgraph
+    runtime: node
+    plan: free
+    region: singapore          # closest to India/Asia; change if you like
+    buildCommand: npm ci && npx prisma generate && npx prisma db push && npx vite build
+    startCommand: node server/src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false            # paste your PostgreSQL connection string
+      - key: JWT_SECRET
+        generateValue: true    # Render generates a strong random secret
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # Optional — only needed if you run the demo seed (ALLOW_DEMO_SEED=1)
+      # from the Render Shell to create sample data + your admin account:
+      # - key: ADMIN_EMAIL
+      #   sync: false
+      # - key: ADMIN_PASSWORD
+      #   sync: false
