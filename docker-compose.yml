@@ -1,0 +1,48 @@
+# Local production-like stack: PostgreSQL + API + web (nginx).
+# Usage: docker compose up --build
+# NOTE: this is deployment preparation — it is not exercised inside the
+# development sandbox (no Docker available there).
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: talentgraph
+      POSTGRES_PASSWORD: talentgraph
+      POSTGRES_DB: talentgraph
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talentgraph"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://talentgraph:talentgraph@db:5432/talentgraph
+      JWT_SECRET: change-me-in-production
+      PORT: 4000
+    depends_on:
+      db:
+        condition: service_healthy
+    # Persistent disk mount for uploads on hosts that support it:
+    # volumes:
+    #   - uploads:/app/server/uploads
+    command: sh -c "npx prisma db push && node server/src/server.js"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

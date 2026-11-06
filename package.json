@@ -1,0 +1,61 @@
+{
+  "name": "talentgraph",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TalentGraph — recruitment management platform (React + Vite + Express + PostgreSQL + Prisma)",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:server": "node --watch server/src/server.js",
+    "dev:client": "vite --port 3000 --host",
+    "db:init": "node scripts/pg.js init",
+    "db:up": "node scripts/pg.js up",
+    "db:push": "node scripts/pg.js up && node scripts/db.js db push",
+    "db:seed": "node scripts/seed.js",
+    "test": "node scripts/pg.js up && vitest run",
+    "lint": "eslint ."
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "lucide-react": "^0.469.0",
+    "postcss": "^8.4.49",
+    "prisma": "^6.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1",
+    "supertest": "^7.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "allowScripts": {
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.21.5": true,
+    "@scarf/scarf@1.4.0": true
+  }
+}

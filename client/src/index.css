@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TalentGraph design tokens (shadcn/ui style, teal primary) */
+@layer base {
+  :root {
+    --background: 170 20% 98%;
+    --foreground: 200 25% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 200 25% 12%;
+    --primary: 173 80% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 170 25% 93%;
+    --secondary-foreground: 200 25% 15%;
+    --muted: 170 20% 94%;
+    --muted-foreground: 200 12% 42%;
+    --accent: 170 35% 90%;
+    --accent-foreground: 200 25% 15%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 170 15% 87%;
+    --input: 170 15% 82%;
+    --ring: 173 80% 28%;
+    --radius: 0.55rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* nicer thin scrollbars for panels and kanban boards */
+  .scroll-slim::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: hsl(var(--input));
+    border-radius: 8px;
+  }
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+}

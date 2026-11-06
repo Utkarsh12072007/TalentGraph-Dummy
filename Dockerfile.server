@@ -1,0 +1,24 @@
+# Backend production image.
+# NOTE: file uploads live on the container filesystem — on Render they are
+# EPHEMERAL unless you attach a persistent disk (see README, "Deployment").
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies (with dev deps for `prisma` CLI during generate).
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy the whole repo (server + prisma schema; client is built separately).
+COPY prisma ./prisma
+COPY server ./server
+COPY scripts ./scripts
+
+RUN npx prisma generate
+
+ENV NODE_ENV=production
+EXPOSE 4000
+
+# Apply schema then start (use `npm run db:push` manually for migrations in CI).
+CMD ["node", "server/src/server.js"]

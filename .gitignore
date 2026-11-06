@@ -1,2 +1,22 @@
-skills/
+# dependencies
 node_modules/
+
+# environment
+.env
+
+# local postgres (portable binaries + data directory)
+.pg/
+pgdata/
+
+# uploaded files (resumes, logos) — never commit personal data
+server/uploads/
+
+# builds & logs
+client/dist/
+dev.log
+*.log
+
+# misc
+skills/
+db/
+.DS_Store

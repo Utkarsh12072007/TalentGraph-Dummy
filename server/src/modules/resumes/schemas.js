@@ -1,0 +1,3 @@
+const MAX_RESUMES_PER_CANDIDATE = 10;
+
+module.exports = { MAX_RESUMES_PER_CANDIDATE };
