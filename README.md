@@ -1,12 +1,37 @@
 # TalentGraph
 
-A two-sided recruitment platform with a built-in Applicant Tracking System (ATS).
-Candidates discover jobs and track their applications; companies run their whole
-hiring process — jobs, pipeline, interviews, decisions — in one workspace.
+**A hiring platform that brings job discovery and recruiting into one place.**
+TalentGraph connects candidates looking for their next role with teams managing
+open positions. It gives candidates a clear view of their applications and gives
+recruiters a shared workspace to move hiring forward.
 
-Built as a real full-stack product: **React + Vite** frontend, **Express** REST API,
-**PostgreSQL + Prisma**, **JWT auth in HTTP-only cookies**. JavaScript everywhere
-(no TypeScript), by design.
+TalentGraph is designed to support the hiring process from beginning to end:
+
+1. **Companies create a workspace and publish jobs** with role details, skills,
+   experience, compensation, location, and work mode.
+2. **Candidates find and apply to jobs** using search and filters, then follow
+   each application as its status changes.
+3. **Recruiters review applicants** in a job-specific pipeline, update application
+   statuses, add private notes, and coordinate with interviewers.
+4. **Teams schedule interviews and record feedback**, while candidates receive
+   in-app updates about their applications and interviews.
+5. **Platform administrators monitor activity** across users, companies, jobs,
+   applications, and audit records.
+
+The project includes three role-specific experiences:
+
+- **Candidates:** build a professional profile, manage resumes, browse open
+  roles, apply, and track application history, notifications, and interviews.
+- **Recruiters:** manage a company workspace, create and manage job postings,
+  review candidate profiles and applications, schedule interviews, and see
+  hiring analytics.
+- **Administrators:** review platform-wide activity and manage registered users
+  and company workspaces.
+
+TalentGraph is a full-stack JavaScript application: **React + Vite** frontend,
+**Express** REST API, **PostgreSQL + Prisma** database, and **JWT authentication
+in HTTP-only cookies**. Data is stored in a relational database and access to
+candidate and company records is enforced by the backend.
 
 ---
 
@@ -24,7 +49,7 @@ npm install
 npm run db:init        # first time only: initdb + create `talentgraph` database
 #    b) Or point .env DATABASE_URL at your own PostgreSQL and skip pg scripts.
 
-# 3) Create .env (copy the example) and set JWT_SECRET
+# 3) Create .env (copy the example); set JWT_SECRET and the three DEMO_*_PASSWORD values
 cp .env.example .env   # then edit
 
 # 4) Push the Prisma schema and seed development demo data
@@ -60,7 +85,7 @@ private platform owner account.
 | `npm run dev`     | Postgres (if needed) + API (`node --watch`) + Vite (HMR)  |
 | `npm run db:init` | First-time portable-Postgres init + database creation     |
 | `npm run db:push` | Ensure Postgres is up, then `prisma db push`              |
-| `npm run db:seed` | Development demo data (idempotent, demo-marked)           |
+| `npm run db:seed` | Idempotent demo accounts and interconnected hiring data  |
 | `npm test`        | Vitest + Supertest integration tests (uses `talentgraph_test` DB) |
 | `npm run lint`    | ESLint                                                    |
 
@@ -166,7 +191,8 @@ request body/query before controllers run.
 - **Audit log:** admin actions, job publishing, status changes, interview
   scheduling and feedback are recorded with actor + metadata.
 - **Platform admin** is never creatable via public registration — the seed
-  creates the initial admin from `.env`.
+  creates the dedicated demo administrator; an additional private owner account
+  is optional via `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 ---
 
@@ -216,11 +242,11 @@ npm test
 - **Docker:** `docker compose up --build` runs Postgres + API + nginx-served SPA
   (nginx proxies `/api` to the API container).
 - **Render (single service, recommended):** the Blueprint in `render.yaml`
-  deploys everything as one web service — build
-  `npm ci && npx prisma generate && npx prisma db push && npx vite build`,
-  start `node server/src/server.js`, env vars `DATABASE_URL`, `JWT_SECRET`
-  (auto-generated), `NODE_ENV=production`. Express serves both the API and the
-  built SPA from one origin. Full walkthrough in [DEPLOY.md](DEPLOY.md).
+  deploys everything as one web service. Each build installs dependencies,
+  generates Prisma Client, syncs the schema, seeds the database, and builds the
+  SPA. Set `DATABASE_URL` and the three `DEMO_*_PASSWORD` secrets; `JWT_SECRET`
+  is generated automatically. Express serves both the API and SPA from one
+  origin. Full walkthrough in [DEPLOY.md](DEPLOY.md).
 - **Split hosting (Vercel + separate API):** possible but not recommended —
   cross-domain auth cookies require `SameSite=None` + CORS credentials, which
   adds security complexity for no benefit over single-origin.
