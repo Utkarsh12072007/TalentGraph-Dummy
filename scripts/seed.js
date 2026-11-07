@@ -43,6 +43,17 @@ async function skillId(name) {
   return (await prisma.skill.upsert({ where: { name }, update: {}, create: { name } })).id;
 }
 
+// Company has no composite unique constraint on (name, createdById), so use a
+// lookup followed by update/create instead of an invalid Prisma compound key.
+async function upsertCompany(data) {
+  const existing = await prisma.company.findFirst({
+    where: { name: data.name, createdById: data.createdById },
+  });
+  return existing
+    ? prisma.company.update({ where: { id: existing.id }, data })
+    : prisma.company.create({ data });
+}
+
 async function main() {
   console.log('[seed] Seeding development data...');
 
@@ -83,10 +94,7 @@ async function main() {
     }));
   }
 
-  const company = await prisma.company.upsert({
-    where: { name_createdById: { name: 'Aurora Labs (Demo)', createdById: recruiter.id } },
-    update: {},
-    create: {
+  const company = await upsertCompany({
       name: 'Aurora Labs (Demo)',
       description:
         'Aurora Labs is a product engineering company building data infrastructure tools for mid-market fintechs. Demo workspace created by the seed script.',
@@ -95,7 +103,6 @@ async function main() {
       size: '51-200',
       location: 'Bengaluru, India',
       createdById: recruiter.id,
-    },
   });
   await prisma.companyMember.upsert({ where: { userId: recruiter.id }, update: { companyId: company.id, role: 'ADMIN' }, create: { companyId: company.id, userId: recruiter.id, role: 'ADMIN' } });
   await prisma.companyMember.upsert({ where: { userId: teammate.id }, update: { companyId: company.id, role: 'INTERVIEWER' }, create: { companyId: company.id, userId: teammate.id, role: 'INTERVIEWER' } });
@@ -215,10 +222,11 @@ async function main() {
   for (let i = 0; i < companyDefs.length; i += 1) {
     const def = companyDefs[i];
     const owner = companyRecruiters[i];
-    const saved = await prisma.company.upsert({
-      where: { name_createdById: { name: def.name, createdById: owner.id } },
-      update: { description: def.description, industry: def.industry, size: def.size, location: def.location, website: `https://${def.name.toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/demo$/, '')}.example.com`, logoUrl: `https://placehold.co/96x96/EEF2FF/4338CA?text=${encodeURIComponent(def.name.split(' ')[0].slice(0, 2))}` },
-      create: { ...def, website: `https://${def.name.toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/demo$/, '')}.example.com`, logoUrl: `https://placehold.co/96x96/EEF2FF/4338CA?text=${encodeURIComponent(def.name.split(' ')[0].slice(0, 2))}`, createdById: owner.id },
+    const saved = await upsertCompany({
+      ...def,
+      website: `https://${def.name.toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/demo$/, '')}.example.com`,
+      logoUrl: `https://placehold.co/96x96/EEF2FF/4338CA?text=${encodeURIComponent(def.name.split(' ')[0].slice(0, 2))}`,
+      createdById: owner.id,
     });
     companies.push(saved);
     await prisma.companyMember.upsert({ where: { userId: owner.id }, update: { companyId: saved.id }, create: { companyId: saved.id, userId: owner.id, role: 'ADMIN' } });
