@@ -38,18 +38,20 @@ npm run dev
 Open **http://localhost:3000**. The API is reachable through the same origin
 (`/api/...` is proxied by Vite), and Swagger docs live at **/api/docs**.
 
-### Demo accounts (development seed only)
+### Demo accounts
 
 | Role            | Email                    | Password          |
 | --------------- | ------------------------ | ----------------- |
-| Platform admin  | `admin@talentgraph.local`| `Admin@TalentGraph1` (from `.env`) |
-| Recruiter (admin of company) | `recruiter@demo.dev` | `Recruiter@1` |
-| Interviewer     | `interviewer@demo.dev`   | `Interviewer@1`   |
-| Candidate       | `candidate@demo.dev`     | `Candidate@1`     |
-| Candidate 2     | `candidate2@demo.dev`    | `Candidate@1`     |
+| Administrator   | `admin@talentgraph.demo` |
+| Recruiter       | `recruiter@talentgraph.demo` |
+| Candidate       | `candidate@talentgraph.demo` |
 
-The seed script refuses to run when `NODE_ENV=production` and only touches
-`@demo.dev` accounts, so it is always clearly separated from real data.
+Set `DEMO_ADMIN_PASSWORD`, `DEMO_RECRUITER_PASSWORD`, and
+`DEMO_CANDIDATE_PASSWORD` in the environment before running the seed. Passwords
+are hashed by the seed, never printed, and never committed to the repository.
+The seed updates only these named accounts and does not delete other records.
+The seed also creates an additional admin from `ADMIN_EMAIL` and
+`ADMIN_PASSWORD` for deployments that configure a separate owner account.
 
 ### Scripts
 

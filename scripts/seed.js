@@ -1,8 +1,8 @@
 // Development seed data — CLEARLY SEPARATED from production data.
 //
 // - Production runs require explicit ALLOW_DEMO_SEED=1.
-// - Uses @demo.dev accounts and deterministic upserts; it never deletes records.
-// - Creates the initial PLATFORM ADMIN from ADMIN_EMAIL / ADMIN_PASSWORD in .env.
+// - Uses deterministic upserts; it never deletes records.
+// - Creates demo accounts plus the configured platform admin.
 //
 // Run: npm run db:seed
 
@@ -10,11 +10,13 @@
 // This lets a deploy command target a remote DATABASE_URL safely while still
 // using .env defaults for local development.
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 // Production databases are protected by default. Deliberate seeding is still
 // possible (e.g. creating the first admin on a fresh deployment) by setting
-// ALLOW_DEMO_SEED=1 — the seed only touches @demo.dev accounts plus the
-// platform admin from ADMIN_EMAIL / ADMIN_PASSWORD.
+// ALLOW_DEMO_SEED=1 — the seed only touches its named demo accounts and the
+// configured platform admin.
 if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1') {
   console.error('[seed] Refusing to seed a production database.');
   console.error('[seed] To seed a fresh deployment anyway (demo accounts + admin), run with ALLOW_DEMO_SEED=1.');
@@ -54,8 +56,60 @@ async function upsertCompany(data) {
     : prisma.company.create({ data });
 }
 
+async function ensureDemoResume(profile) {
+  const directory = path.join(__dirname, '..', 'server', 'uploads', 'resumes');
+  const storedName = `talentgraph-demo-${profile.id}.pdf`;
+  const filePath = path.join(directory, storedName);
+  fs.mkdirSync(directory, { recursive: true });
+  const lines = [
+    'Rahul Verma', 'Software Engineer | React, Node.js, PostgreSQL',
+    'Pune, India | rahul.verma@example.com',
+    'SUMMARY', 'Early-career engineer with internship experience building dependable web products.',
+    'EXPERIENCE', 'Software Engineering Intern - Wavelet Softworks',
+    'Built React admin tooling and REST endpoints; improved test coverage for billing workflows.',
+    'EDUCATION', 'B.Tech, Computer Science - College of Engineering, Pune',
+    'SKILLS', 'JavaScript, React, Node.js, PostgreSQL, Git',
+  ];
+  const escapePdf = (text) => text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const stream = `BT /F1 17 Tf 72 740 Td (${escapePdf(lines[0])}) Tj /F1 10 Tf 0 -28 Td (${escapePdf(lines[1])}) Tj 0 -18 Td (${escapePdf(lines[2])}) Tj 0 -34 Td (${escapePdf(lines[3])}) Tj 0 -18 Td (${escapePdf(lines[4])}) Tj 0 -34 Td (${escapePdf(lines[5])}) Tj 0 -18 Td (${escapePdf(lines[6])}) Tj 0 -18 Td (${escapePdf(lines[7])}) Tj 0 -34 Td (${escapePdf(lines[8])}) Tj 0 -18 Td (${escapePdf(lines[9])}) Tj 0 -34 Td (${escapePdf(lines[10])}) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf, 'ascii'));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf, 'ascii');
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets.slice(1)) pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  fs.writeFileSync(filePath, pdf);
+
+  const existing = await prisma.resume.findFirst({
+    where: { candidateProfileId: profile.id, originalName: 'Rahul-Verma-Software-Engineer.pdf' },
+  });
+  const defaultResume = existing?.isDefault || !(await prisma.resume.findFirst({ where: { candidateProfileId: profile.id, isDefault: true } }));
+  const data = { storedName, mimeType: 'application/pdf', sizeBytes: Buffer.byteLength(pdf), isDefault: defaultResume };
+  return existing
+    ? prisma.resume.update({ where: { id: existing.id }, data })
+    : prisma.resume.create({ data: { ...data, candidateProfileId: profile.id, originalName: 'Rahul-Verma-Software-Engineer.pdf' } });
+}
+
 async function main() {
   console.log('[seed] Seeding development data...');
+
+  const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD;
+  const demoRecruiterPassword = process.env.DEMO_RECRUITER_PASSWORD;
+  const demoCandidatePassword = process.env.DEMO_CANDIDATE_PASSWORD;
+  if (!demoAdminPassword || !demoRecruiterPassword || !demoCandidatePassword) {
+    throw new Error('Set DEMO_ADMIN_PASSWORD, DEMO_RECRUITER_PASSWORD, and DEMO_CANDIDATE_PASSWORD before seeding.');
+  }
 
   // ---------- platform admin (from .env, not demo-marked) ----------
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@talentgraph.local';
@@ -64,33 +118,39 @@ async function main() {
     console.error('[seed] Set ADMIN_PASSWORD in .env first.');
     process.exit(1);
   }
-  const admin = await upsertUser({
+  await upsertUser({
     email: adminEmail,
     fullName: 'Platform Administrator',
     role: 'PLATFORM_ADMIN',
     password: adminPassword,
   });
+  const admin = await upsertUser({
+    email: 'admin@talentgraph.demo',
+    fullName: 'TalentGraph Demo Administrator',
+    role: 'PLATFORM_ADMIN',
+    password: demoAdminPassword,
+  });
 
   // ---------- company ----------
   const recruiter = await upsertUser({
-    email: 'recruiter' + DEMO_DOMAIN,
+    email: 'recruiter@talentgraph.demo',
     fullName: 'Priya Sharma',
     role: 'RECRUITER',
-    password: 'Recruiter@1',
+    password: demoRecruiterPassword,
   });
   const teammate = await upsertUser({
     email: 'interviewer' + DEMO_DOMAIN,
     fullName: 'Arjun Mehta',
     role: 'RECRUITER',
-    password: 'Interviewer@1',
+    password: demoRecruiterPassword,
   });
-  const companyRecruiters = [recruiter, teammate];
-  for (let i = 2; i < 10; i += 1) {
+  const companyRecruiters = [recruiter];
+  for (let i = 1; i < 10; i += 1) {
     companyRecruiters.push(await upsertUser({
       email: `recruiter${i + 1}${DEMO_DOMAIN}`,
       fullName: ['Meera Nair', 'Kabir Singh', 'Ananya Rao', 'Dev Patel'][i % 4],
       role: 'RECRUITER',
-      password: 'Recruiter@1',
+      password: demoRecruiterPassword,
     }));
   }
 
@@ -109,16 +169,16 @@ async function main() {
 
   // ---------- candidate ----------
   const candidate = await upsertUser({
-    email: 'candidate' + DEMO_DOMAIN,
+    email: 'candidate@talentgraph.demo',
     fullName: 'Rahul Verma',
     role: 'CANDIDATE',
-    password: 'Candidate@1',
+    password: demoCandidatePassword,
   });
   const candidate2 = await upsertUser({
     email: 'candidate2' + DEMO_DOMAIN,
     fullName: 'Sneha Iyer',
     role: 'CANDIDATE',
-    password: 'Candidate@1',
+    password: demoCandidatePassword,
   });
 
   const profile = await prisma.candidateProfile.upsert({
@@ -186,6 +246,7 @@ async function main() {
       },
     },
   });
+  const demoResume = await ensureDemoResume(profile);
 
   const profile2 = await prisma.candidateProfile.upsert({
     where: { userId: candidate2.id },
@@ -204,6 +265,40 @@ async function main() {
       },
     },
   });
+
+  // The candidate dashboard uses the account's own profile. Additional
+  // deterministic candidates populate recruiter applicant lists and admin totals.
+  const candidateUsers = [candidate, candidate2];
+  const candidateProfiles = [profile, profile2];
+  const candidateNames = [
+    'Aarav Kulkarni', 'Ishita Bose', 'Rohan Menon', 'Kavya Reddy', 'Aditya Joshi',
+    'Nisha Kapoor', 'Vikram Shah', 'Anika Das', 'Siddharth Rao', 'Tara Iyer',
+    'Neel Banerjee', 'Maya Nair', 'Karan Malhotra', 'Diya Sethi', 'Arjun Pillai',
+    'Riya Chawla', 'Manav Bhat', 'Sana Qureshi', 'Kabir Anand', 'Pooja Krishnan',
+    'Devika Sen', 'Reyansh Gupta', 'Mira Thomas',
+  ];
+  const cities = ['Bengaluru', 'Pune', 'Hyderabad', 'Chennai', 'Mumbai', 'Delhi NCR'];
+  for (let i = 0; i < candidateNames.length; i += 1) {
+    const user = await upsertUser({
+      email: `candidate${String(i + 3).padStart(2, '0')}@talentgraph.demo`,
+      fullName: candidateNames[i], role: 'CANDIDATE', password: demoCandidatePassword,
+    });
+    const candidateProfile = await prisma.candidateProfile.upsert({
+      where: { userId: user.id }, update: {},
+      create: {
+        userId: user.id,
+        headline: ['Software Engineer', 'Frontend Developer', 'Data Analyst', 'Backend Engineer'][i % 4],
+        summary: `Software professional with ${i % 5 + 1} years of experience building customer-focused products. Brings a thoughtful approach to code quality, collaboration, and learning from user feedback.`,
+        location: `${cities[i % cities.length]}, India`, yearsExperience: i % 5 + 1,
+        skills: { create: await Promise.all(['JavaScript', 'React', 'Python', 'SQL'].slice(i % 2, i % 2 + 3).map(async (name) => ({ skillId: await skillId(name), level: 'INTERMEDIATE' }))) },
+        educations: { create: [{ institution: ['Pune Institute of Computer Technology', 'Vellore Institute of Technology', 'University of Mumbai'][i % 3], degree: 'B.Tech', field: 'Computer Science', startDate: daysAgo(2200), endDate: daysAgo(700), grade: `${7 + (i % 3) / 10} CGPA` }] },
+        experiences: { create: [{ company: ['Riverstone Digital', 'Orbit Systems', 'Juniper Product Co.'][i % 3], title: ['Software Engineer', 'Frontend Engineer', 'Data Analyst'][i % 3], employmentType: 'FULL_TIME', location: `${cities[i % cities.length]}, India`, startDate: daysAgo(600 + i * 30), description: 'Delivered product improvements with engineering and design partners, supported releases, and improved reliability through testing and documentation.' }] },
+        projects: { create: [{ name: ['OpenLedger', 'Clinic Connect', 'LocalCart'][i % 3], description: 'A practical web product built to make a common customer workflow easier to complete.', techStack: 'React, Node.js, PostgreSQL', link: `https://github.com/${user.fullName.toLowerCase().replace(/\s+/g, '')}/portfolio` }] },
+      },
+    });
+    candidateUsers.push(user);
+    candidateProfiles.push(candidateProfile);
+  }
 
   // ---------- companies and realistic job catalogue ----------
   const companyDefs = [
@@ -255,8 +350,8 @@ async function main() {
   const companyNames = companyDefs.map((c) => c.name);
   for (let i = 0; i < 48; i += 1) {
     const [role, skillText, description, requirements] = roles[i % roles.length];
-    const level = levels[Math.floor(i / roles.length) % levels.length];
-    const co = companies[i % companies.length];
+    const level = levels[i < 12 ? i % levels.length : Math.floor(i / roles.length) % levels.length];
+    const co = i < 12 ? companies[0] : companies[i % companies.length];
     const loc = companyNames[i % companyNames.length].includes('Remote') ? 'Remote, India' : co.location;
     const skillNames = skillText.split(', ');
     const title = `${level.label ? `${level.label} ` : ''}${role}${i % 3 === 0 ? ` — ${['Platform', 'Product', 'Growth', 'Infrastructure'][Math.floor(i / 3) % 4]}` : ''}`;
@@ -266,7 +361,9 @@ async function main() {
       requirements, location: loc, workMode: level.mode, employmentType: level.type,
       experienceMin: level.min, experienceMax: level.max,
       salaryMin: level.salary[0], salaryMax: level.salary[1], currency: 'INR',
-      status: 'PUBLISHED', deadline: daysAhead(20 + (i % 35)), publishedAt: daysAgo((i % 14) + 1),
+      status: i === 10 || i === 11 ? 'CLOSED' : i === 8 || i === 9 ? 'DRAFT' : 'PUBLISHED',
+      deadline: daysAhead(20 + (i % 35)),
+      publishedAt: i === 8 || i === 9 ? null : daysAgo((i % 14) + 1),
     };
     const existing = await prisma.job.findFirst({ where: { companyId: co.id, title } });
     const job = existing
@@ -279,23 +376,30 @@ async function main() {
   const jobs = openings;
 
   // ---------- applications, histories, interviews and activity ----------
-  const candidateProfiles = [profile, profile2];
-  const candidateUsers = [candidate, candidate2];
   const applications = [];
-  const statuses = ['IN_REVIEW', 'INTERVIEW', 'OFFERED', 'SHORTLISTED', 'REJECTED', 'APPLIED', 'IN_REVIEW', 'WITHDRAWN'];
-  for (let i = 0; i < 24; i += 1) {
-    const candidateIndex = i % candidateProfiles.length;
-    const profileRecord = candidateProfiles[candidateIndex];
-    const candidateUser = candidateUsers[candidateIndex];
-    const job = openings[(i * 7) % openings.length];
-    const status = statuses[i % statuses.length];
-    const appliedAt = daysAgo((i % 25) + 1);
+  const demoCandidateJobs = [0, 1, 2, 3, 4, 5, 6, 7, 12, 13];
+  const candidateStatuses = ['APPLIED', 'IN_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'REJECTED', 'OFFERED', 'IN_REVIEW', 'APPLIED', 'INTERVIEW', 'OFFERED'];
+  const applicationPlans = demoCandidateJobs.map((jobIndex, index) => ({
+    profileRecord: candidateProfiles[0], candidateUser: candidateUsers[0], job: openings[jobIndex], status: candidateStatuses[index], age: index + 2,
+  }));
+  for (let i = 1; i < candidateProfiles.length; i += 1) {
+    applicationPlans.push({
+      profileRecord: candidateProfiles[i], candidateUser: candidateUsers[i],
+      job: openings[((i - 1) * 3) % 8],
+      status: ['APPLIED', 'IN_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'REJECTED', 'OFFERED'][(i - 1) % 6],
+      age: (i % 25) + 1,
+    });
+  }
+  for (const plan of applicationPlans) {
+    const { profileRecord, candidateUser, job, status, age } = plan;
+    const appliedAt = daysAgo(age);
     const app = await prisma.application.upsert({
       where: { jobId_candidateProfileId: { jobId: job.id, candidateProfileId: profileRecord.id } },
-      update: { status, appliedAt },
+      update: { status, appliedAt, ...(profileRecord.id === profile.id ? { resumeId: demoResume.id } : {}) },
       create: {
         jobId: job.id, candidateProfileId: profileRecord.id, status, appliedAt,
-        coverNote: `I am interested in the ${job.title} role and bring relevant project experience in ${i % 2 === 0 ? 'React and product delivery' : 'Python and data services'}. I would welcome the opportunity to discuss how I can contribute.`,
+        ...(profileRecord.id === profile.id ? { resumeId: demoResume.id } : {}),
+        coverNote: `I am interested in the ${job.title} role and bring relevant project experience in ${profileRecord.id === profile.id ? 'React and product delivery' : 'software engineering and customer-focused products'}. I would welcome the opportunity to discuss how I can contribute.`,
       },
     });
     applications.push(app);
@@ -303,13 +407,14 @@ async function main() {
     if (oldHistory === 0) {
       await prisma.applicationStatusHistory.create({ data: { applicationId: app.id, previousStatus: null, newStatus: 'APPLIED', changedById: candidateUser.id, createdAt: appliedAt } });
       if (status !== 'APPLIED') {
-        await prisma.applicationStatusHistory.create({ data: { applicationId: app.id, previousStatus: 'APPLIED', newStatus: status, changedById: recruiter.id, createdAt: daysAgo(Math.max(0, (i % 25) - 1)) } });
+        await prisma.applicationStatusHistory.create({ data: { applicationId: app.id, previousStatus: 'APPLIED', newStatus: status, changedById: recruiter.id, createdAt: daysAgo(Math.max(0, age - 2)) } });
       }
     }
   }
 
-  const completedInterviewApp = applications.find((app) => app.status === 'INTERVIEW');
-  const scheduledInterviewApp = applications.find((app) => app.status === 'IN_REVIEW');
+  const interviewApps = applications.filter((app) => app.status === 'INTERVIEW');
+  const completedInterviewApp = interviewApps[0];
+  const scheduledInterviewApp = interviewApps[1] || interviewApps[0];
   const completedInterview = completedInterviewApp ? await prisma.interview.upsert({
     where: { id: `demo-completed-${completedInterviewApp.id}` },
     update: {},
@@ -345,26 +450,19 @@ async function main() {
     create: { id: `demo-recruiter-notification-${recruiter.id}`, userId: recruiter.id, type: 'APPLICATION_RECEIVED', title: 'New candidates in your pipeline', message: `${applications.length} sample applications are available across your open roles.`, link: '/recruiter/applications' },
   });
 
-  await prisma.auditLog.create({
-    data: {
+  await prisma.auditLog.upsert({
+    where: { id: 'talentgraph-demo-seed-activity' },
+    update: { metadata: { note: 'Demo account seed executed', jobs: openings.length, applications: applications.length } },
+    create: {
+      id: 'talentgraph-demo-seed-activity',
       actorId: admin.id,
       action: 'SEED_PERFORMED',
       entityType: 'System',
-      metadata: { note: 'Demo catalogue seed executed', jobs: openings.length, applications: applications.length },
+      metadata: { note: 'Demo account seed executed', jobs: openings.length, applications: applications.length },
     },
   });
 
-  console.log(`
-[seed] Done. Demo accounts (development only):
-
-  Platform admin : ${adminEmail}  /  password configured separately
-  Recruiter      : recruiter@demo.dev   /  Recruiter@1
-  Interviewer    : interviewer@demo.dev /  Interviewer@1
-  Candidate      : candidate@demo.dev   /  Candidate@1
-  Candidate 2    : candidate2@demo.dev  /  Candidate@1
-
-[seed] Demo data: ${companies.length} companies, ${jobs.length} jobs (${jobs.filter((j) => j.status === 'PUBLISHED').length} published), ${applications.length} applications, ${[completedInterview, scheduledInterview].filter(Boolean).length} interviews.
-`);
+  console.log(`[seed] Done. ${candidateUsers.length} candidate accounts, ${companyRecruiters.length} recruiter accounts, 2 platform admin accounts; ${companies.length} companies, ${jobs.length} seeded jobs (${jobs.filter((j) => j.status === 'PUBLISHED').length} published), ${applications.length} applications, ${[completedInterview, scheduledInterview].filter(Boolean).length} interviews.`);
 }
 
 main()

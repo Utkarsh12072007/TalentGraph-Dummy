@@ -39,3 +39,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: DEMO_ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_RECRUITER_PASSWORD
+        sync: false
+      - key: DEMO_CANDIDATE_PASSWORD
+        sync: false
