@@ -18,9 +18,10 @@ services:
     runtime: node
     plan: free
     region: singapore          # closest to India/Asia; change if you like
-    buildCommand: npm ci && npx prisma generate && npx prisma db push && npx vite build
+    # Seed during every deployment so existing free services can refresh data
+    # without Shell access. The seed is idempotent and does not delete records.
+    buildCommand: npm ci && npx prisma generate && npx prisma db push && npm run db:seed && npx vite build
     startCommand: node server/src/server.js
-    initialDeployHook: node scripts/seed.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -31,7 +32,7 @@ services:
         generateValue: true    # Render generates a strong random secret
       - key: JWT_EXPIRES_IN
         value: 7d
-      # The one-time initial deploy hook creates demo jobs and accounts.
+      # Enables the safe, repeatable demo seed during each build.
       - key: ALLOW_DEMO_SEED
         value: '1'
       - key: ADMIN_EMAIL

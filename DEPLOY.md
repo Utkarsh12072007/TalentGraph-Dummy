@@ -42,13 +42,22 @@ git push -u origin main
 4. Wait for the first deploy (npm ci + Prisma schema push + Vite build ≈ 3–5 min).
 5. Your URL: `https://talentgraph-xxxx.onrender.com` — share it with your friends.
 
+The Blueprint runs `npm run db:seed` during every build, after applying the
+Prisma schema. This is useful on Render's free plan, where Shell is unavailable.
+The seed is repeatable and does not delete records. Set `ALLOW_DEMO_SEED=1`,
+`ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the service environment before deploying;
+the build fails if the admin password is missing or the database is unreachable.
+
 That's it. Every later `git push` to `main` redeploys automatically.
 
 ## Step 3 — Create your accounts on the live site
 
 **Your platform admin** (for the `/admin` console):
 
-1. Render Dashboard → your service → **Shell** tab, then run:
+1. Set `ALLOW_DEMO_SEED=1`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the service
+   environment variables. The Blueprint seeds the database during the next
+   deploy, so Shell access is not required. To manually run the command on a
+   service plan with Shell access, use:
    ```bash
    ALLOW_DEMO_SEED=1 ADMIN_EMAIL="you@example.com" ADMIN_PASSWORD="YourStr0ng!Pass" node scripts/seed.js
    ```
