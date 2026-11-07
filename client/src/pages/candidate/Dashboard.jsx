@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Hourglass, Star, CalendarClock, ArrowRight, UserRound } from 'lucide-react';
 import { useFetch } from '../../lib/hooks';
 import { useAuth } from '../../lib/auth';
@@ -11,6 +11,7 @@ import { Progress, PageLoader, EmptyState, Alert, ErrorState } from '../../compo
 import { profileCompletion, formatDateTime, APPLICATION_STATUS_LABELS } from '../../lib/utils';
 
 export default function CandidateDashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profileData, loading: loadingProfile, error: profileError, refetch: refetchProfile } = useFetch('/api/candidates/me/profile');
   const { data: appsData, error: appsError, refetch: refetchApps } = useFetch('/api/applications/mine');
@@ -49,7 +50,7 @@ export default function CandidateDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Welcome back, {user?.fullName?.split(' ')[0]}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Here is where your job search stands today.</p>
         </div>
-        <Button onClick={() => (window.location.href = '/discover')}>
+        <Button onClick={() => navigate('/discover')}>
           Find jobs <ArrowRight />
         </Button>
       </div>
@@ -82,7 +83,7 @@ export default function CandidateDashboard() {
               <CardTitle>Upcoming interviews</CardTitle>
               <CardDescription>Confirmed sessions scheduled by recruiters</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/interviews')}>View all</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/interviews')}>View all</Button>
           </CardHeader>
           <CardContent>
             {interviewsError ? (

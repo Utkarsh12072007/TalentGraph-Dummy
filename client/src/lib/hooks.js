@@ -7,30 +7,39 @@ export function useFetch(url, deps = []) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(Boolean(url));
   const [error, setError] = useState(null);
-  const activeRef = useRef(true);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!url) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await api.get(url);
-      if (activeRef.current) setData(result);
+      if (requestId === requestIdRef.current) setData(result);
     } catch (err) {
-      if (activeRef.current) setError(err);
+      if (requestId === requestIdRef.current) setError(err);
     } finally {
-      if (activeRef.current) setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [url]);
 
   useEffect(() => {
-    activeRef.current = true;
+    // Invalidate the previous request as soon as the URL changes or the
+    // component unmounts. Its response must not overwrite newer page data.
     load();
     return () => {
-      activeRef.current = false;
+      requestIdRef.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, ...deps]);
+
+  useEffect(() => {
+    if (!url) {
+      setLoading(false);
+      setError(null);
+    }
+  }, [url]);
 
   return { data, loading, error, refetch: load, setData };
 }

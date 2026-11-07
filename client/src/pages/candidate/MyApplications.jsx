@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FileText, CalendarClock, History, LogOut, Search, Video, MapPin, ExternalLink, ArrowRight,
 } from 'lucide-react';
@@ -124,6 +124,7 @@ function InterviewLine({ interview }) {
 }
 
 export default function MyApplications() {
+  const navigate = useNavigate();
   const toast = useToast();
   const { data, loading, error, refetch } = useFetch('/api/applications/mine');
   const [statusFilter, setStatusFilter] = useState('');
@@ -184,7 +185,7 @@ export default function MyApplications() {
             icon={FileText}
             title={applications.length === 0 ? 'No applications yet' : 'Nothing matches your filters'}
             description={applications.length === 0 ? 'Find an open role and send your first application.' : undefined}
-            action={applications.length === 0 ? <Button onClick={() => (window.location.href = '/discover')}>Discover jobs <ArrowRight /></Button> : undefined}
+            action={applications.length === 0 ? <Button onClick={() => navigate('/discover')}>Discover jobs <ArrowRight /></Button> : undefined}
           />
         )}
         {!loading && !error && filtered.map((a) => {

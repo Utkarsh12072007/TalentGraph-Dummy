@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pencil, PlayCircle, PauseCircle, Archive, Search } from 'lucide-react';
 import { useFetch } from '../../lib/hooks';
 import { useAuth } from '../../lib/auth';
@@ -14,6 +14,7 @@ import { APPLICATION_STATUS_LABELS, WORK_MODE_LABELS, EMPLOYMENT_LABELS, formatS
 // Recruiter job detail: posting preview + status actions + its applications.
 export default function RecruiterJobDetail() {
   const { jobId } = useParams();
+  const navigate = useNavigate();
   const { company, companyRole } = useAuth();
   const toast = useToast();
   const [statusFilter, setStatusFilter] = useState('');
@@ -70,7 +71,7 @@ export default function RecruiterJobDetail() {
         </div>
         {isMine && companyRole !== 'INTERVIEWER' && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => (window.location.href = `/recruiter/jobs/${jobId}/edit`)} disabled={job.status === 'ARCHIVED'}>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/recruiter/jobs/${jobId}/edit`)} disabled={job.status === 'ARCHIVED'}>
               <Pencil /> Edit
             </Button>
             {job.status === 'DRAFT' && <Button size="sm" onClick={() => changeStatus('PUBLISHED')}><PlayCircle /> Publish</Button>}

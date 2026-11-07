@@ -101,6 +101,8 @@ export default function JobDetail() {
                 ) : (
                   <Button size="lg" onClick={() => { setResumeId(''); setApplyOpen(true); }}>Apply now</Button>
                 )
+              ) : user ? (
+                <Alert variant="info">Candidate accounts can apply to this role.</Alert>
               ) : (
                 <Button size="lg" onClick={() => navigate('/signin', { state: { from: `/jobs/${jobId}` } })}>
                   Sign in to apply

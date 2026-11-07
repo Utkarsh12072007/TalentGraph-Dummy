@@ -12,7 +12,9 @@ const fs = require('fs');
 const net = require('net');
 
 const ROOT = path.resolve(__dirname, '..');
-const PG_BIN = path.join(ROOT, '.pg', 'bin');
+// Prefer the portable bundle when present, but fall back to PostgreSQL already
+// installed on the developer's PATH (common with Homebrew on macOS).
+const PORTABLE_PG_BIN = path.join(ROOT, '.pg', 'bin');
 const DATA_DIR = path.join(ROOT, 'pgdata');
 const LOG_FILE = path.join(DATA_DIR, 'server.log');
 const PORT = 5432;
@@ -22,8 +24,13 @@ const START_OPTS = [
   '-c', 'unix_socket_directories=' + DATA_DIR,
 ];
 
+const binary = (name) => {
+  const portable = path.join(PORTABLE_PG_BIN, name);
+  return fs.existsSync(portable) ? portable : name;
+};
+
 const pgCtl = (args, opts = {}) =>
-  execFileSync(path.join(PG_BIN, 'pg_ctl'), ['-D', DATA_DIR, ...args], {
+  execFileSync(binary('pg_ctl'), ['-D', DATA_DIR, ...args], {
     stdio: 'pipe', encoding: 'utf8', ...opts,
   });
 
@@ -53,6 +60,12 @@ function waitForPort(timeoutMs = 30000) {
 
 async function up() {
   if (isRunning()) return;
+  // A developer may already have PostgreSQL running outside this project's
+  // data directory (for example through Homebrew services).
+  try {
+    await waitForPort(800);
+    return;
+  } catch { /* start the project-local instance below */ }
   if (!fs.existsSync(path.join(DATA_DIR, 'PG_VERSION'))) {
     console.error('[pg] No data directory. Run: npm run db:init');
     process.exit(1);
@@ -68,14 +81,14 @@ async function init() {
   }
   fs.mkdirSync(DATA_DIR, { recursive: true });
   execFileSync(
-    path.join(PG_BIN, 'initdb'),
+    binary('initdb'),
     ['-D', DATA_DIR, '-U', 'talentgraph', '-A', 'trust', '-E', 'UTF8'],
     { stdio: 'inherit' }
   );
   await up();
   // Create the application database (single-user mode; no psql in the bundle).
   spawnSync(
-    path.join(PG_BIN, 'postgres'),
+    binary('postgres'),
     ['--single', '-D', DATA_DIR, '-E', 'postgres'],
     { input: 'CREATE DATABASE talentgraph OWNER talentgraph;\n', encoding: 'utf8' }
   );

@@ -20,6 +20,7 @@ services:
     region: singapore          # closest to India/Asia; change if you like
     buildCommand: npm ci && npx prisma generate && npx prisma db push && npx vite build
     startCommand: node server/src/server.js
+    initialDeployHook: node scripts/seed.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -30,9 +31,10 @@ services:
         generateValue: true    # Render generates a strong random secret
       - key: JWT_EXPIRES_IN
         value: 7d
-      # Optional — only needed if you run the demo seed (ALLOW_DEMO_SEED=1)
-      # from the Render Shell to create sample data + your admin account:
-      # - key: ADMIN_EMAIL
-      #   sync: false
-      # - key: ADMIN_PASSWORD
-      #   sync: false
+      # The one-time initial deploy hook creates demo jobs and accounts.
+      - key: ALLOW_DEMO_SEED
+        value: '1'
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

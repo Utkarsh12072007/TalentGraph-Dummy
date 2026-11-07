@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Search, UserRound, ClipboardList, KanbanSquare, CalendarCheck, Building2, ArrowRight, CheckCircle2, FileUp,
 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 // product is described by what it actually does.
 
 function Hero() {
+  const navigate = useNavigate();
   return (
     <section className="border-b bg-gradient-to-b from-secondary/60 to-background">
       <div className="page-container py-16 text-center sm:py-24">
@@ -23,10 +24,10 @@ function Hero() {
           to publish jobs, review applications, run interviews, and make hiring decisions.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button size="lg" onClick={() => (window.location.href = '/jobs')}>
+          <Button size="lg" onClick={() => navigate('/jobs')}>
             Find Opportunities <ArrowRight />
           </Button>
-          <Button size="lg" variant="outline" onClick={() => (window.location.href = '/signup?role=recruiter')}>
+          <Button size="lg" variant="outline" onClick={() => navigate('/signup?role=recruiter')}>
             Hire Talent
           </Button>
         </div>
@@ -131,6 +132,7 @@ function PlatformFeatures() {
 }
 
 function ForCompaniesCta() {
+  const navigate = useNavigate();
   return (
     <section id="for-companies" className="page-container py-16">
       <div className="grid items-center gap-8 rounded-xl border bg-card p-8 lg:grid-cols-2 lg:p-12">
@@ -145,7 +147,7 @@ function ForCompaniesCta() {
             <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />Company-level roles: admin, recruiter, interviewer</li>
             <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />Your data is isolated per company — enforced server-side</li>
           </ul>
-          <Button size="lg" className="mt-6" onClick={() => (window.location.href = '/signup?role=recruiter')}>
+          <Button size="lg" className="mt-6" onClick={() => navigate('/signup?role=recruiter')}>
             Create a company workspace <ArrowRight />
           </Button>
         </div>

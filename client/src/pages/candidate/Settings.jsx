@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
@@ -7,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { useToast } from '../../components/ui/toast';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const { user, refresh, logout } = useAuth();
   const toast = useToast();
 
@@ -57,7 +59,7 @@ export default function Settings() {
   const signOutEverywhere = async () => {
     try {
       await logout();
-      window.location.href = '/';
+      navigate('/');
     } catch (err) {
       toast.error(err.message);
     }
@@ -92,10 +94,10 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <form onSubmit={changePassword} className="space-y-4">
-            <FormField label="Current password" required error={typeof pwdError === 'object' ? pwdError.currentPassword : undefined}>
+            <FormField label="Current password" required error={pwdError && typeof pwdError === 'object' ? pwdError.currentPassword : undefined}>
               <Input type="password" autoComplete="current-password" value={pwd.currentPassword} onChange={(e) => setPwd({ ...pwd, currentPassword: e.target.value })} required />
             </FormField>
-            <FormField label="New password" required hint="At least 8 characters." error={typeof pwdError === 'object' ? pwdError.newPassword : undefined}>
+            <FormField label="New password" required hint="At least 8 characters." error={pwdError && typeof pwdError === 'object' ? pwdError.newPassword : undefined}>
               <Input type="password" autoComplete="new-password" value={pwd.newPassword} onChange={(e) => setPwd({ ...pwd, newPassword: e.target.value })} required minLength={8} />
             </FormField>
             <Button type="submit" disabled={pwdBusy}>{pwdBusy ? 'Updating…' : 'Update password'}</Button>

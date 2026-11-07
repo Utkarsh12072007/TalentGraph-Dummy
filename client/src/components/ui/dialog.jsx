@@ -60,6 +60,8 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
     };
   }, [open]);
 
+  if (!open) return null;
+
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center"

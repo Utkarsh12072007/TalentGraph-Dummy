@@ -46,6 +46,11 @@ export default function PublicLayout() {
             )}
           </div>
         </div>
+        <nav className="page-container flex gap-5 overflow-x-auto border-t py-2 text-sm font-medium text-muted-foreground md:hidden" aria-label="Mobile main">
+          <Link to="/jobs" className="shrink-0 hover:text-foreground">Browse jobs</Link>
+          <a href="/#for-companies" className="shrink-0 hover:text-foreground">For companies</a>
+          <a href="/#faq" className="shrink-0 hover:text-foreground">About</a>
+        </nav>
       </header>
 
       <main className="flex-1">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Briefcase, Plus, MoreVertical, Eye, Pencil, Archive, Trash2, PlayCircle, PauseCircle } from 'lucide-react';
 import { useFetch } from '../../lib/hooks';
 import { useAuth } from '../../lib/auth';
@@ -25,6 +25,7 @@ const TABS = [
 ];
 
 export default function RecruiterJobs() {
+  const navigate = useNavigate();
   const { company, companyRole } = useAuth();
   const toast = useToast();
   const [status, setStatus] = useState('');
@@ -68,7 +69,7 @@ export default function RecruiterJobs() {
   if (!company) {
     return (
       <div className="page-container py-10">
-        <EmptyState icon={Briefcase} title="No company workspace" description="Create a company workspace first." action={<Button onClick={() => (window.location.href = '/recruiter/company-setup')}>Create workspace</Button>} />
+        <EmptyState icon={Briefcase} title="No company workspace" description="Create a company workspace first." action={<Button onClick={() => navigate('/recruiter/company-setup')}>Create workspace</Button>} />
       </div>
     );
   }
@@ -81,7 +82,7 @@ export default function RecruiterJobs() {
           <p className="mt-1 text-sm text-muted-foreground">{data ? `${data.meta.total} job posting${data.meta.total === 1 ? '' : 's'}` : ''}</p>
         </div>
         {companyRole !== 'INTERVIEWER' && (
-          <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}><Plus /> New job</Button>
+          <Button onClick={() => navigate('/recruiter/jobs/new')}><Plus /> New job</Button>
         )}
       </div>
 
@@ -104,7 +105,7 @@ export default function RecruiterJobs() {
             icon={Briefcase}
             title={q || status ? 'Nothing matches' : 'No jobs yet'}
             description={q || status ? 'Try a different search or status.' : 'Create your first job posting — start from a draft or publish right away.'}
-            action={companyRole !== 'INTERVIEWER' && !(q || status) ? <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}><Plus /> New job</Button> : undefined}
+            action={companyRole !== 'INTERVIEWER' && !(q || status) ? <Button onClick={() => navigate('/recruiter/jobs/new')}><Plus /> New job</Button> : undefined}
           />
         )}
         {!loading && !error && jobs.map((job) => (
@@ -128,11 +129,11 @@ export default function RecruiterJobs() {
                 <Dropdown
                   trigger={<Button variant="outline" size="icon" aria-label="Job actions"><MoreVertical /></Button>}
                 >
-                  <DropdownItem onClick={() => (window.location.href = `/recruiter/jobs/${job.id}`)}>
+                  <DropdownItem onClick={() => navigate(`/recruiter/jobs/${job.id}`)}>
                     <Eye /> View & applications
                   </DropdownItem>
                   {job.status !== 'ARCHIVED' && (
-                    <DropdownItem onClick={() => (window.location.href = `/recruiter/jobs/${job.id}/edit`)}>
+                    <DropdownItem onClick={() => navigate(`/recruiter/jobs/${job.id}/edit`)}>
                       <Pencil /> Edit
                     </DropdownItem>
                   )}

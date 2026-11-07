@@ -7,6 +7,10 @@
 //
 // Run: npm run db:seed
 
+// Load local development config without overriding environment variables.
+// This lets a deploy command target a remote DATABASE_URL safely while still
+// using .env defaults for local development.
+require('dotenv').config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 // Production databases are protected by default. Deliberate seeding is still
 // possible (e.g. creating the first admin on a fresh deployment) by setting
@@ -18,7 +22,6 @@ if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1'
   process.exit(1);
 }
 
-require('dotenv').config({ override: true });
 const bcrypt = require('bcryptjs');
 const prisma = require('../server/src/lib/prisma');
 
@@ -447,7 +450,7 @@ async function main() {
   console.log(`
 [seed] Done. Demo accounts (development only):
 
-  Platform admin : ${adminEmail}  /  ${adminPassword}
+  Platform admin : ${adminEmail}  /  password configured separately
   Recruiter      : recruiter@demo.dev   /  Recruiter@1
   Interviewer    : interviewer@demo.dev /  Interviewer@1
   Candidate      : candidate@demo.dev   /  Candidate@1

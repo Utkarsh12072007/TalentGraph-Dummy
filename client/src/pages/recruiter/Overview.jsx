@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, FileText, Hourglass, CalendarClock, ArrowRight, Building2 } from 'lucide-react';
 import { useFetch } from '../../lib/hooks';
 import { useAuth } from '../../lib/auth';
@@ -10,6 +10,7 @@ import { PageLoader, EmptyState, Alert, ErrorState } from '../../components/ui/m
 import { formatDateTime, timeAgo, APPLICATION_STATUS_LABELS } from '../../lib/utils';
 
 export default function RecruiterOverview() {
+  const navigate = useNavigate();
   const { company, companyRole } = useAuth();
   const canManageJobs = companyRole === 'ADMIN' || companyRole === 'RECRUITER';
 
@@ -38,7 +39,7 @@ export default function RecruiterOverview() {
           <p className="mt-1 text-sm text-muted-foreground">Your hiring workspace overview · you are {companyRole?.toLowerCase()}</p>
         </div>
         {canManageJobs && (
-          <Button onClick={() => (window.location.href = '/recruiter/jobs/new')}>
+          <Button onClick={() => navigate('/recruiter/jobs/new')}>
             Post a job <ArrowRight />
           </Button>
         )}
@@ -58,7 +59,7 @@ export default function RecruiterOverview() {
               <CardTitle>Recent applications</CardTitle>
               <CardDescription>Latest candidates across all your jobs</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/recruiter/applications')}>View all</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/recruiter/applications')}>View all</Button>
           </CardHeader>
           <CardContent>
             {appsError ? (
@@ -91,7 +92,7 @@ export default function RecruiterOverview() {
               <CardTitle>Your jobs</CardTitle>
               <CardDescription>Published roles and their pipeline sizes</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/recruiter/jobs')}>Manage</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/recruiter/jobs')}>Manage</Button>
           </CardHeader>
           <CardContent>
             {jobsError ? (
@@ -144,7 +145,7 @@ export default function RecruiterOverview() {
               <Button variant="outline" size="sm" onClick={refetchInterviews}>Retry</Button>
             )}
             {companyRole === 'ADMIN' && (
-              <Button variant="outline" size="sm" onClick={() => (window.location.href = '/recruiter/company')}>Company settings</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/recruiter/company')}>Company settings</Button>
             )}
           </CardContent>
         </Card>

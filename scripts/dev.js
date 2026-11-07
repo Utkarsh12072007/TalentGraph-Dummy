@@ -9,8 +9,7 @@ const { execFileSync } = require('child_process');
 const net = require('net');
 
 const ROOT = path.resolve(__dirname, '..');
-const PG_CTL = path.join(ROOT, '.pg', 'bin', 'pg_ctl');
-const DATA_DIR = path.join(ROOT, 'pgdata');
+const PG_HELPER = path.join(ROOT, 'scripts', 'pg.js');
 
 const children = [];
 
@@ -27,15 +26,6 @@ function spawnChild(name, command, args, env = {}) {
   });
   children.push({ name, child });
   return child;
-}
-
-function postgresRunning() {
-  try {
-    execFileSync(PG_CTL, ['-D', DATA_DIR, 'status'], { stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function waitForPort(port, timeoutMs = 30000) {
@@ -64,16 +54,12 @@ process.on('SIGTERM', cleanup);
 
 (async () => {
   // 1. PostgreSQL
-  if (postgresRunning()) {
-    console.log('[dev] PostgreSQL already running');
-  } else {
-    console.log('[dev] Starting PostgreSQL...');
-    execFileSync(PG_CTL, [
-      '-D', DATA_DIR,
-      '-l', path.join(DATA_DIR, 'server.log'),
-      '-o', '-p 5432 -c listen_addresses=127.0.0.1 -c unix_socket_directories=' + DATA_DIR,
-      'start',
-    ], { stdio: 'pipe' });
+  console.log('[dev] Checking PostgreSQL...');
+  try {
+    execFileSync(process.execPath, [PG_HELPER, 'up'], { stdio: 'inherit' });
+  } catch (error) {
+    console.error('[dev] Could not start PostgreSQL. For first-time setup, run: npm run db:init');
+    process.exit(1);
   }
   await waitForPort(5432);
   console.log('[dev] PostgreSQL ready on 127.0.0.1:5432');

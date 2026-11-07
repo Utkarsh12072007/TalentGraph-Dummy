@@ -8,7 +8,7 @@ import { Input, Textarea, Select, FormField } from '../../components/ui/form';
 import { Dialog, ConfirmDialog } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';
 import { Tabs } from '../../components/ui/tabs';
-import { PageLoader, EmptyState } from '../../components/ui/misc';
+import { PageLoader, EmptyState, ErrorState } from '../../components/ui/misc';
 import { useToast } from '../../components/ui/toast';
 import { EMPLOYMENT_LABELS, formatDate } from '../../lib/utils';
 
@@ -17,7 +17,7 @@ const iso = (v) => (v ? new Date(v).toISOString().slice(0, 10) : '');
 
 export default function CandidateProfile() {
   const toast = useToast();
-  const { data, loading, refetch } = useFetch('/api/candidates/me/profile');
+  const { data, loading, error, refetch } = useFetch('/api/candidates/me/profile');
   const profile = data?.profile;
   const [tab, setTab] = useState('basic');
 
@@ -26,6 +26,20 @@ export default function CandidateProfile() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   if (loading) return <div className="page-container py-10"><PageLoader /></div>;
+  if (error) {
+    return (
+      <div className="page-container py-10">
+        <ErrorState title="Could not load your profile" description={error.message} onRetry={refetch} />
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="page-container py-10">
+        <ErrorState title="Profile unavailable" description="Your profile could not be found. Try loading it again." onRetry={refetch} />
+      </div>
+    );
+  }
 
   const refresh = () => refetch();
 
