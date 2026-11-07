@@ -50,8 +50,8 @@ Set `DEMO_ADMIN_PASSWORD`, `DEMO_RECRUITER_PASSWORD`, and
 `DEMO_CANDIDATE_PASSWORD` in the environment before running the seed. Passwords
 are hashed by the seed, never printed, and never committed to the repository.
 The seed updates only these named accounts and does not delete other records.
-The seed also creates an additional admin from `ADMIN_EMAIL` and
-`ADMIN_PASSWORD` for deployments that configure a separate owner account.
+Optionally, setting `ADMIN_EMAIL` and `ADMIN_PASSWORD` also creates a separate
+private platform owner account.
 
 ### Scripts
 

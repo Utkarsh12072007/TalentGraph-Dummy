@@ -111,19 +111,17 @@ async function main() {
     throw new Error('Set DEMO_ADMIN_PASSWORD, DEMO_RECRUITER_PASSWORD, and DEMO_CANDIDATE_PASSWORD before seeding.');
   }
 
-  // ---------- platform admin (from .env, not demo-marked) ----------
+  // An additional private platform owner is optional. The dedicated demo
+  // administrator below is sufficient for the requested three-account setup.
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@talentgraph.local';
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) {
-    console.error('[seed] Set ADMIN_PASSWORD in .env first.');
-    process.exit(1);
-  }
-  await upsertUser({
-    email: adminEmail,
-    fullName: 'Platform Administrator',
-    role: 'PLATFORM_ADMIN',
-    password: adminPassword,
-  });
+  const configuredAdmin = process.env.ADMIN_PASSWORD
+    ? await upsertUser({
+        email: adminEmail,
+        fullName: 'Platform Administrator',
+        role: 'PLATFORM_ADMIN',
+        password: process.env.ADMIN_PASSWORD,
+      })
+    : null;
   const admin = await upsertUser({
     email: 'admin@talentgraph.demo',
     fullName: 'TalentGraph Demo Administrator',
@@ -462,7 +460,8 @@ async function main() {
     },
   });
 
-  console.log(`[seed] Done. ${candidateUsers.length} candidate accounts, ${companyRecruiters.length} recruiter accounts, 2 platform admin accounts; ${companies.length} companies, ${jobs.length} seeded jobs (${jobs.filter((j) => j.status === 'PUBLISHED').length} published), ${applications.length} applications, ${[completedInterview, scheduledInterview].filter(Boolean).length} interviews.`);
+  const platformAdmins = 1 + Number(Boolean(configuredAdmin && configuredAdmin.id !== admin.id));
+  console.log(`[seed] Done. ${candidateUsers.length} candidate accounts, ${companyRecruiters.length} recruiter accounts, ${platformAdmins} platform admin account(s); ${companies.length} companies, ${jobs.length} seeded jobs (${jobs.filter((j) => j.status === 'PUBLISHED').length} published), ${applications.length} applications, ${[completedInterview, scheduledInterview].filter(Boolean).length} interviews.`);
 }
 
 main()

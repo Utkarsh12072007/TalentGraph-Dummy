@@ -45,9 +45,10 @@ git push -u origin main
 The Blueprint runs `npm run db:seed` during every build, after applying the
 Prisma schema. This is useful on Render's free plan, where Shell is unavailable.
 The seed is repeatable and does not delete records. Set `ALLOW_DEMO_SEED=1`,
-`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and all three `DEMO_*_PASSWORD` secrets in the
-service environment before deploying. The build fails if a required password
-is missing or the database is unreachable.
+and all three `DEMO_*_PASSWORD` secrets in the service environment before
+deploying. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are optional and only create a
+separate platform owner account. The build fails if a demo password is missing
+or the database is unreachable.
 
 That's it. Every later `git push` to `main` redeploys automatically.
 
@@ -64,12 +65,12 @@ The build seed creates these database-backed accounts:
 In Render's environment settings, set `DEMO_ADMIN_PASSWORD`,
 `DEMO_RECRUITER_PASSWORD`, and `DEMO_CANDIDATE_PASSWORD` to the demonstration
 passwords you specified. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` to private
-credentials for the separate platform owner account. Password values are not
-stored in Git or printed in deploy logs.
+credentials only if you want a separate platform owner account. Password
+values are not stored in Git or printed in deploy logs.
 
-To seed locally against Neon, set `DATABASE_URL`, `ALLOW_DEMO_SEED=1`,
-`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and the three `DEMO_*_PASSWORD` environment
-variables in your shell, then run:
+To seed locally against Neon, set `DATABASE_URL`, `ALLOW_DEMO_SEED=1`, and the
+three `DEMO_*_PASSWORD` environment variables in your shell, then run. Add
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` only if you want a separate owner account:
 
 ```bash
 npm run db:seed
